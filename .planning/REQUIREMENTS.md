@@ -161,92 +161,92 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| COLL-01 | | Pending |
-| COLL-02 | | Pending |
-| COLL-03 | | Pending |
-| COLL-04 | | Pending |
-| COLL-05 | | Pending |
-| COLL-06 | | Pending |
-| COLL-07 | | Pending |
-| MAP-01 | | Pending |
-| MAP-02 | | Pending |
-| MAP-03 | | Pending |
-| MAP-04 | | Pending |
-| MAP-05 | | Pending |
-| PIPE-01 | | Pending |
-| PIPE-02 | | Pending |
-| PIPE-03 | | Pending |
-| PIPE-04 | | Pending |
-| PIPE-05 | | Pending |
-| PIPE-06 | | Pending |
-| PIPE-07 | | Pending |
-| PIPE-08 | | Pending |
-| PIPE-09 | | Pending |
-| METR-01 | | Pending |
-| METR-02 | | Pending |
-| METR-03 | | Pending |
-| METR-04 | | Pending |
-| METR-05 | | Pending |
-| METR-06 | | Pending |
-| DELT-01 | | Pending |
-| DELT-02 | | Pending |
-| DELT-03 | | Pending |
-| DELT-04 | | Pending |
-| DELT-05 | | Pending |
-| DELT-06 | | Pending |
-| PMET-01 | | Pending |
-| PMET-02 | | Pending |
-| PMET-03 | | Pending |
-| PMET-04 | | Pending |
-| PMET-05 | | Pending |
-| PMET-06 | | Pending |
-| PMET-07 | | Pending |
-| PMET-08 | | Pending |
-| LOG-01 | | Pending |
-| LOG-02 | | Pending |
-| LOG-03 | | Pending |
-| LOG-04 | | Pending |
-| LOG-05 | | Pending |
-| LOG-06 | | Pending |
-| LOG-07 | | Pending |
-| HA-01 | | Pending |
-| HA-02 | | Pending |
-| HA-03 | | Pending |
-| HA-04 | | Pending |
-| HA-05 | | Pending |
-| HA-06 | | Pending |
-| HA-07 | | Pending |
-| HA-08 | | Pending |
-| SHUT-01 | | Pending |
-| SHUT-02 | | Pending |
-| SHUT-03 | | Pending |
-| SHUT-04 | | Pending |
-| SHUT-05 | | Pending |
-| SHUT-06 | | Pending |
-| SHUT-07 | | Pending |
-| SHUT-08 | | Pending |
-| HLTH-01 | | Pending |
-| HLTH-02 | | Pending |
-| HLTH-03 | | Pending |
-| HLTH-04 | | Pending |
-| HLTH-05 | | Pending |
-| HARD-01 | | Pending |
-| HARD-02 | | Pending |
-| HARD-03 | | Pending |
-| HARD-04 | | Pending |
-| PUSH-01 | | Pending |
-| PUSH-02 | | Pending |
-| PUSH-03 | | Pending |
-| DEVC-01 | | Pending |
-| DEVC-02 | | Pending |
-| DEVC-03 | | Pending |
-| DEVC-04 | | Pending |
+| COLL-01 | Phase 5 | Pending |
+| COLL-02 | Phase 6 | Pending |
+| COLL-03 | Phase 6 | Pending |
+| COLL-04 | Phase 6 | Pending |
+| COLL-05 | Phase 6 | Pending |
+| COLL-06 | Phase 6 | Pending |
+| COLL-07 | Phase 3 | Pending |
+| MAP-01 | Phase 2 | Pending |
+| MAP-02 | Phase 2 | Pending |
+| MAP-03 | Phase 2 | Pending |
+| MAP-04 | Phase 2 | Pending |
+| MAP-05 | Phase 2 | Pending |
+| PIPE-01 | Phase 3 | Pending |
+| PIPE-02 | Phase 3 | Pending |
+| PIPE-03 | Phase 3 | Pending |
+| PIPE-04 | Phase 3 | Pending |
+| PIPE-05 | Phase 3 | Pending |
+| PIPE-06 | Phase 3 | Pending |
+| PIPE-07 | Phase 3 | Pending |
+| PIPE-08 | Phase 3 | Pending |
+| PIPE-09 | Phase 3 | Pending |
+| METR-01 | Phase 3 | Pending |
+| METR-02 | Phase 3 | Pending |
+| METR-03 | Phase 3 | Pending |
+| METR-04 | Phase 3 | Pending |
+| METR-05 | Phase 3 | Pending |
+| METR-06 | Phase 3 | Pending |
+| DELT-01 | Phase 4 | Pending |
+| DELT-02 | Phase 4 | Pending |
+| DELT-03 | Phase 4 | Pending |
+| DELT-04 | Phase 4 | Pending |
+| DELT-05 | Phase 4 | Pending |
+| DELT-06 | Phase 4 | Pending |
+| PMET-01 | Phase 3 | Pending |
+| PMET-02 | Phase 3 | Pending |
+| PMET-03 | Phase 3 | Pending |
+| PMET-04 | Phase 3 | Pending |
+| PMET-05 | Phase 3 | Pending |
+| PMET-06 | Phase 3 | Pending |
+| PMET-07 | Phase 3 | Pending |
+| PMET-08 | Phase 3 | Pending |
+| LOG-01 | Phase 1 | Pending |
+| LOG-02 | Phase 1 | Pending |
+| LOG-03 | Phase 1 | Pending |
+| LOG-04 | Phase 1 | Pending |
+| LOG-05 | Phase 1 | Pending |
+| LOG-06 | Phase 1 | Pending |
+| LOG-07 | Phase 1 | Pending |
+| HA-01 | Phase 7 | Pending |
+| HA-02 | Phase 7 | Pending |
+| HA-03 | Phase 7 | Pending |
+| HA-04 | Phase 7 | Pending |
+| HA-05 | Phase 7 | Pending |
+| HA-06 | Phase 7 | Pending |
+| HA-07 | Phase 7 | Pending |
+| HA-08 | Phase 7 | Pending |
+| SHUT-01 | Phase 8 | Pending |
+| SHUT-02 | Phase 8 | Pending |
+| SHUT-03 | Phase 8 | Pending |
+| SHUT-04 | Phase 8 | Pending |
+| SHUT-05 | Phase 8 | Pending |
+| SHUT-06 | Phase 8 | Pending |
+| SHUT-07 | Phase 8 | Pending |
+| SHUT-08 | Phase 8 | Pending |
+| HLTH-01 | Phase 8 | Pending |
+| HLTH-02 | Phase 8 | Pending |
+| HLTH-03 | Phase 8 | Pending |
+| HLTH-04 | Phase 8 | Pending |
+| HLTH-05 | Phase 8 | Pending |
+| HARD-01 | Phase 5 | Pending |
+| HARD-02 | Phase 6 | Pending |
+| HARD-03 | Phase 6 | Pending |
+| HARD-04 | Phase 1 | Pending |
+| PUSH-01 | Phase 1 | Pending |
+| PUSH-02 | Phase 1 | Pending |
+| PUSH-03 | Phase 1 | Pending |
+| DEVC-01 | Phase 2 | Pending |
+| DEVC-02 | Phase 2 | Pending |
+| DEVC-03 | Phase 2 | Pending |
+| DEVC-04 | Phase 2 | Pending |
 
 **Coverage:**
-- v1 requirements: 74 total
-- Mapped to phases: 0
-- Unmapped: 74
+- v1 requirements: 80 total
+- Mapped to phases: 80
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-04*
-*Last updated: 2026-03-04 after initial definition*
+*Last updated: 2026-03-04 after roadmap creation*
