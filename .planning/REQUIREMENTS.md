@@ -1,0 +1,252 @@
+# Requirements: SNMP Monitoring System
+
+**Defined:** 2026-03-04
+**Core Value:** Every SNMP OID — from a trap or a poll — gets resolved, typed correctly, and pushed to Prometheus where it's queryable in Grafana within seconds.
+
+## v1 Requirements
+
+### SNMP Collection
+
+- [ ] **COLL-01**: Trap listener receives SNMPv2c traps on UDP 162 with community string authentication
+- [ ] **COLL-02**: Quartz-based poller executes SNMP GET (v2c) for configured OIDs per device
+- [ ] **COLL-03**: Each device has its own IP, OID list, and configurable poll intervals in appsettings
+- [ ] **COLL-04**: Quartz creates a MetricPollJob per device/poll combination
+- [ ] **COLL-05**: Quartz thread pool auto-scales to total job count
+- [ ] **COLL-06**: Poll timeout set to 80% of interval to leave response window
+- [ ] **COLL-07**: Both traps and polls publish the same `SnmpOidReceived` notification to MediatR
+
+### OID Map
+
+- [ ] **MAP-01**: Flat `Dictionary<string, string>` in appsettings under `OidMap` section
+- [ ] **MAP-02**: Maps OID string to metric_name (e.g., `"1.3.6.1.2.1.25.3.3.1.2": "hrProcessorLoad"`)
+- [ ] **MAP-03**: OID in map resolves to metric_name; OID not in map resolves to "Unknown"
+- [ ] **MAP-04**: Shared by traps and polls — no device distinction
+- [ ] **MAP-05**: Hot-reloadable without app restart (file change detection or config reload)
+
+### MediatR Pipeline
+
+- [ ] **PIPE-01**: MediatR v12.5.0 (MIT license) for event routing
+- [ ] **PIPE-02**: `SnmpOidReceived` notification carries OID, agent IP, value, source (poll/trap), SNMP TypeCode
+- [ ] **PIPE-03**: `LoggingBehavior` logs every OID received with agent and source
+- [ ] **PIPE-04**: `ExceptionBehavior` catches all failures, never crashes the pipeline
+- [ ] **PIPE-05**: `ValidationBehavior` rejects malformed OID or IP format
+- [ ] **PIPE-06**: `OidResolutionBehavior` resolves metric_name from OID map, sets "Unknown" if not found
+- [ ] **PIPE-07**: `OtelMetricHandler` records to correct instrument based on SNMP TypeCode
+- [ ] **PIPE-08**: Behavior registration order: Logging → Exception → Validation → OidResolution
+- [ ] **PIPE-09**: Configure `TaskWhenAllPublisher` for parallel handler dispatch with per-handler error isolation
+
+### Business Metrics
+
+- [ ] **METR-01**: `snmp_gauge` instrument for Integer32, Gauge32, TimeTicks values
+- [ ] **METR-02**: `snmp_counter` instrument for Counter32, Counter64 values
+- [ ] **METR-03**: `snmp_info` instrument (gauge=1) for OctetString, IpAddress, OID with string in `value` label
+- [ ] **METR-04**: Common labels on all instruments: `site_name`, `metric_name`, `oid`, `agent`, `source`
+- [ ] **METR-05**: `site_name` loaded from appsettings `Site:Name`
+- [ ] **METR-06**: Runtime metric type detection from SNMP TypeCode — no type field in OID map
+
+### Counter Delta Engine
+
+- [ ] **DELT-01**: Cache stores last cumulative value per OID+agent combination
+- [ ] **DELT-02**: Delta = current - previous for normal increments
+- [ ] **DELT-03**: Counter reset detection: current < previous → treat current as delta
+- [ ] **DELT-04**: Counter32 wrap-around handling at 2^32 boundary
+- [ ] **DELT-05**: First poll after startup: skip (no previous baseline)
+- [ ] **DELT-06**: Poll sysUpTime to distinguish device reboot from counter wrap
+
+### Pipeline Metrics
+
+- [ ] **PMET-01**: `snmp.event.published` — events published to MediatR
+- [ ] **PMET-02**: `snmp.event.handled` — events successfully handled by OtelMetricHandler
+- [ ] **PMET-03**: `snmp.event.errors` — exceptions caught by ExceptionBehavior
+- [ ] **PMET-04**: `snmp.event.rejected` — events rejected by ValidationBehavior
+- [ ] **PMET-05**: `snmp.poll.executed` — Quartz poll jobs completed
+- [ ] **PMET-06**: `snmp.trap.received` — traps received on UDP 162
+- [ ] **PMET-07**: All pipeline metrics include `site_name` label
+- [ ] **PMET-08**: Pipeline metrics exported by all instances (not leader-gated)
+
+### Logging & Telemetry
+
+- [ ] **LOG-01**: Structured logging with `ILogger` and named placeholders
+- [ ] **LOG-02**: Custom console formatter: `[timestamp] [level] [site|role|correlationId] category message`
+- [ ] **LOG-03**: Console output toggleable via `Logging:EnableConsole` in appsettings
+- [ ] **LOG-04**: OTLP log export with enrichment processor (site_name, role, correlationId)
+- [ ] **LOG-05**: Correlation IDs: rotating global via CorrelationJob + per-operation AsyncLocal scoping
+- [ ] **LOG-06**: OTLP gRPC export for metrics and logs to OTel Collector
+- [ ] **LOG-07**: No traces — metrics and logs only
+
+### Leader Election & HA
+
+- [ ] **HA-01**: `ILeaderElection` interface with `IsLeader` and `CurrentRole` properties
+- [ ] **HA-02**: `K8sLeaseElection` using Kubernetes Lease API (auto-detected via `IsInCluster()`)
+- [ ] **HA-03**: `AlwaysLeaderElection` for local development (non-K8s environments)
+- [ ] **HA-04**: All instances poll devices and receive traps (not leader-only)
+- [ ] **HA-05**: Only leader exports business metrics (snmp_gauge, snmp_counter, snmp_info)
+- [ ] **HA-06**: Pipeline metrics + System.Runtime exported by all instances
+- [ ] **HA-07**: `MetricRoleGatedExporter` filters business meter at export time
+- [ ] **HA-08**: Near-instant failover via explicit lease deletion on graceful shutdown
+
+### Graceful Shutdown
+
+- [ ] **SHUT-01**: GracefulShutdownService registered last in DI (stops first)
+- [ ] **SHUT-02**: Step 1: Release K8s lease (3s budget)
+- [ ] **SHUT-03**: Step 2: Stop SNMP trap listener (3s budget)
+- [ ] **SHUT-04**: Step 3: Scheduler standby — no new jobs fire (3s budget)
+- [ ] **SHUT-05**: Step 4: Drain in-flight operations (8s budget)
+- [ ] **SHUT-06**: Step 5: Flush telemetry with independent CTS — always runs (5s budget)
+- [ ] **SHUT-07**: Each step has its own CancellationTokenSource budget
+- [ ] **SHUT-08**: Total shutdown timeout: 30 seconds
+
+### Health Probes
+
+- [ ] **HLTH-01**: Startup probe: verify OID map loaded and poll definitions registered
+- [ ] **HLTH-02**: Readiness probe: verify trap listener running and registry populated
+- [ ] **HLTH-03**: Liveness probe: per-job staleness detection (age vs interval * grace multiplier)
+- [ ] **HLTH-04**: Job interval registry built at startup for staleness threshold calculation
+- [ ] **HLTH-05**: Liveness vector stamped by every job in finally block
+
+### Hardening
+
+- [ ] **HARD-01**: Trap storm protection — rate limiting / backpressure when devices flood traps
+- [ ] **HARD-02**: Device unreachability handling — timeout detection, stale metric awareness
+- [ ] **HARD-03**: SNMP poll timeout logged at Warning level, device marked unreachable after N consecutive failures
+- [ ] **HARD-04**: Configuration validation at startup with fail-fast (ValidateOnStart)
+
+### Push Pipeline
+
+- [ ] **PUSH-01**: Full push: App → OTLP gRPC → OTel Collector (:4317) → remote_write → Prometheus
+- [ ] **PUSH-02**: OTel Collector configuration for prometheusremotewriteexporter
+- [ ] **PUSH-03**: No scrape endpoint in the application — pure push
+
+### Device Configuration
+
+- [ ] **DEVC-01**: Per-device configuration in appsettings with Name, IpAddress, and MetricPolls
+- [ ] **DEVC-02**: Each MetricPoll entry has an OID list and IntervalSeconds
+- [ ] **DEVC-03**: Device registry with O(1) lookup by IP (for traps) and by name (for polls)
+- [ ] **DEVC-04**: Quartz job identity: `metric-poll-{deviceName}-{pollIndex}`
+
+## v2 Requirements
+
+### Advanced Collection
+
+- **ADV-01**: SNMP table walk (GETBULK) for dynamic OID discovery
+- **ADV-02**: SNMPv3 support if future devices require it
+
+### Operational Enhancements
+
+- **OPS-01**: Hot-reloadable device configuration (add/remove devices without restart)
+- **OPS-02**: Heartbeat loopback job proving full pipeline liveness
+- **OPS-03**: Grafana dashboard templates for NPB and OBP devices
+- **OPS-04**: Prometheus alerting rules for common failure conditions
+
+## Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| Device management / SNMP SET | Monitor only — configuration push is a different product |
+| MIB browser / MIB compilation | Use external tools (snmpwalk, MIB Browser). Not core to monitoring. |
+| Network topology discovery | Duplicates specialized tools (LibreNMS, NetBox) |
+| Embedded alerting engine | Prometheus Alertmanager handles this better |
+| Embedded TSDB | Prometheus is the TSDB — no need to duplicate |
+| Custom middleware pipeline | Using MediatR — no need for Simetra-style custom pipeline |
+| Device modules (IDeviceModule) | Device-agnostic flat OID map — no per-type code |
+| Channel queuing | MediatR direct dispatch — no System.Threading.Channels |
+| SNMPv3 auth / USM security | Target devices (NPB, OBP) use v2c — unnecessary complexity |
+| SNMP Inform acknowledgment | Not needed for v2c trap reception |
+| Traces / distributed tracing | Metrics and logs sufficient for SNMP monitoring |
+| ObservableCounter / ObservableGauge | Using regular Counter.Add(delta) and Gauge.Record(value) |
+| raw_value label on gauge/counter | Prevents cardinality explosion — only snmp_info has value label |
+| Per-OID metric names | Three shared instruments (snmp_gauge, snmp_counter, snmp_info) |
+
+## Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| COLL-01 | | Pending |
+| COLL-02 | | Pending |
+| COLL-03 | | Pending |
+| COLL-04 | | Pending |
+| COLL-05 | | Pending |
+| COLL-06 | | Pending |
+| COLL-07 | | Pending |
+| MAP-01 | | Pending |
+| MAP-02 | | Pending |
+| MAP-03 | | Pending |
+| MAP-04 | | Pending |
+| MAP-05 | | Pending |
+| PIPE-01 | | Pending |
+| PIPE-02 | | Pending |
+| PIPE-03 | | Pending |
+| PIPE-04 | | Pending |
+| PIPE-05 | | Pending |
+| PIPE-06 | | Pending |
+| PIPE-07 | | Pending |
+| PIPE-08 | | Pending |
+| PIPE-09 | | Pending |
+| METR-01 | | Pending |
+| METR-02 | | Pending |
+| METR-03 | | Pending |
+| METR-04 | | Pending |
+| METR-05 | | Pending |
+| METR-06 | | Pending |
+| DELT-01 | | Pending |
+| DELT-02 | | Pending |
+| DELT-03 | | Pending |
+| DELT-04 | | Pending |
+| DELT-05 | | Pending |
+| DELT-06 | | Pending |
+| PMET-01 | | Pending |
+| PMET-02 | | Pending |
+| PMET-03 | | Pending |
+| PMET-04 | | Pending |
+| PMET-05 | | Pending |
+| PMET-06 | | Pending |
+| PMET-07 | | Pending |
+| PMET-08 | | Pending |
+| LOG-01 | | Pending |
+| LOG-02 | | Pending |
+| LOG-03 | | Pending |
+| LOG-04 | | Pending |
+| LOG-05 | | Pending |
+| LOG-06 | | Pending |
+| LOG-07 | | Pending |
+| HA-01 | | Pending |
+| HA-02 | | Pending |
+| HA-03 | | Pending |
+| HA-04 | | Pending |
+| HA-05 | | Pending |
+| HA-06 | | Pending |
+| HA-07 | | Pending |
+| HA-08 | | Pending |
+| SHUT-01 | | Pending |
+| SHUT-02 | | Pending |
+| SHUT-03 | | Pending |
+| SHUT-04 | | Pending |
+| SHUT-05 | | Pending |
+| SHUT-06 | | Pending |
+| SHUT-07 | | Pending |
+| SHUT-08 | | Pending |
+| HLTH-01 | | Pending |
+| HLTH-02 | | Pending |
+| HLTH-03 | | Pending |
+| HLTH-04 | | Pending |
+| HLTH-05 | | Pending |
+| HARD-01 | | Pending |
+| HARD-02 | | Pending |
+| HARD-03 | | Pending |
+| HARD-04 | | Pending |
+| PUSH-01 | | Pending |
+| PUSH-02 | | Pending |
+| PUSH-03 | | Pending |
+| DEVC-01 | | Pending |
+| DEVC-02 | | Pending |
+| DEVC-03 | | Pending |
+| DEVC-04 | | Pending |
+
+**Coverage:**
+- v1 requirements: 74 total
+- Mapped to phases: 0
+- Unmapped: 74
+
+---
+*Requirements defined: 2026-03-04*
+*Last updated: 2026-03-04 after initial definition*
