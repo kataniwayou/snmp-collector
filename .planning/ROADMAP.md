@@ -12,7 +12,7 @@ This roadmap builds a K8s-native SNMP monitoring agent from infrastructure up to
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Infrastructure Foundation** - Running host with OTel SDK, structured logging, and push pipeline wired
+- [x] **Phase 1: Infrastructure Foundation** - Running host with OTel SDK, structured logging, and push pipeline wired
 - [ ] **Phase 2: Device Registry and OID Map** - All lookup structures built, cardinality locked, config validated
 - [ ] **Phase 3: MediatR Pipeline and Instruments** - Full behavior chain and all metric instruments verified in isolation
 - [ ] **Phase 4: Counter Delta Engine** - Correct delta computation including wrap-around and reboot detection
@@ -36,11 +36,11 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 5 plans in 4 waves
 
 Plans:
-- [ ] 01-01-PLAN.md — Project scaffold: .NET 9 csproj, config options classes, appsettings files (Wave 1)
-- [ ] 01-02-PLAN.md — Docker Compose deploy stack: OTel Collector + Prometheus + Grafana (Wave 1)
-- [ ] 01-03-PLAN.md — Telemetry classes: correlation service, console formatter, enrichment processor (Wave 2)
-- [ ] 01-04-PLAN.md — DI wiring: ServiceCollectionExtensions + Program.cs entry point (Wave 3)
-- [ ] 01-05-PLAN.md — Config validators: SiteOptionsValidator, OtlpOptionsValidator, fail-fast verification (Wave 4)
+- [x] 01-01-PLAN.md — Project scaffold: .NET 9 csproj, config options classes, appsettings files (Wave 1)
+- [x] 01-02-PLAN.md — Docker Compose deploy stack: OTel Collector + Prometheus + Grafana (Wave 1)
+- [x] 01-03-PLAN.md — Telemetry classes: correlation service, console formatter, enrichment processor (Wave 2)
+- [x] 01-04-PLAN.md — DI wiring: ServiceCollectionExtensions + Program.cs entry point (Wave 3)
+- [x] 01-05-PLAN.md — Config validators: SiteOptionsValidator, OtlpOptionsValidator, fail-fast verification (Wave 4)
 
 ### Phase 2: Device Registry and OID Map
 **Goal**: All lookup structures (device registry and OID map) are populated from configuration, O(1) lookups work correctly, cardinality is explicitly counted and bounded before any metric instruments are created, and hot-reload of the OID map functions without restart.
@@ -181,7 +181,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Infrastructure Foundation | 0/5 | Planned (3 waves) | - |
+| 1. Infrastructure Foundation | 5/5 | Complete | 2026-03-05 |
 | 2. Device Registry and OID Map | 0/4 | Not started | - |
 | 3. MediatR Pipeline and Instruments | 0/7 | Not started | - |
 | 4. Counter Delta Engine | 0/4 | Not started | - |
