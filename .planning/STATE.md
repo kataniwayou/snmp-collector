@@ -10,28 +10,28 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 ## Current Position
 
 Phase: 1 of 8 (Infrastructure Foundation)
-Plan: 3 of 5 in current phase
+Plan: 4 of 5 in current phase
 Status: In progress
-Last activity: 2026-03-05 — Completed 01-03-PLAN.md (correlation service, formatter, log enrichment processor)
+Last activity: 2026-03-05 — Completed 01-04-PLAN.md (DI extension methods, Program.cs, running Generic Host)
 
-Progress: [░░░░░░░░░░] 7% (3/40 plans across all phases estimated)
+Progress: [█░░░░░░░░░] 10% (4/40 plans across all phases estimated)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
-- Average duration: ~3 min
-- Total execution time: ~9 min
+- Total plans completed: 4
+- Average duration: ~4 min
+- Total execution time: ~14 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-infrastructure-foundation | 3 | ~9 min | ~3 min |
+| 01-infrastructure-foundation | 4 | ~14 min | ~4 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (scaffold), 01-02 (docker configs), 01-03 (telemetry classes)
-- Trend: Fast execution, source porting tasks slightly longer than config-only
+- Last 5 plans: 01-01 (scaffold), 01-02 (docker configs), 01-03 (telemetry classes), 01-04 (DI wiring)
+- Trend: Fast execution; DI integration plans (~5 min) slightly longer than class-only plans (~3 min)
 
 *Updated after each plan completion*
 
@@ -60,6 +60,10 @@ Recent decisions affecting current work:
 - [01-03]: SnmpLogEnrichmentProcessor takes string role not Func<string> — static Phase 1, dynamic Phase 7
 - [01-03]: TelemetryConstants has single MeterName (no LeaderMeterName/InstanceMeterName split — no role-gating in Phase 1)
 - [01-03]: AsyncLocal<string?> _operationCorrelationId MUST be static — instance AsyncLocal does not flow through async context
+- [01-04]: No WithTracing in AddSnmpTelemetry (LOG-07: SnmpCollector emits no distributed traces)
+- [01-04]: Direct AddOtlpExporter on metrics — no MetricRoleGatedExporter in Phase 1 (no leader election)
+- [01-04]: Microsoft.Extensions.Options.DataAnnotations 9.0.0 required separately — ValidateDataAnnotations() not in base Options package
+- [01-04]: OptionsValidationException catch wraps host.RunAsync(), not builder.Build() — ValidateOnStart fires during RunAsync host startup
 
 ### Pending Todos
 
@@ -73,5 +77,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-05
-Stopped at: Completed 01-03-PLAN.md — correlation service and telemetry classes complete, 3 of 5 phase plans done, next is 01-04 (DI extension methods)
+Stopped at: Completed 01-04-PLAN.md — DI extension methods and Program.cs complete, 4 of 5 phase plans done, next is 01-05 (custom validators for ValidateOnStart)
 Resume file: None
