@@ -9,6 +9,7 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using Quartz;
 using SnmpCollector.Configuration;
+using SnmpCollector.Configuration.Validators;
 using SnmpCollector.Jobs;
 using SnmpCollector.Pipeline;
 using SnmpCollector.Telemetry;
@@ -154,6 +155,10 @@ public static class ServiceCollectionExtensions
             .Bind(configuration.GetSection(CorrelationJobOptions.SectionName))
             .ValidateDataAnnotations()
             .ValidateOnStart();
+
+        // Custom IValidateOptions for cross-field validation
+        services.AddSingleton<IValidateOptions<SiteOptions>, SiteOptionsValidator>();
+        services.AddSingleton<IValidateOptions<OtlpOptions>, OtlpOptionsValidator>();
 
         return services;
     }
