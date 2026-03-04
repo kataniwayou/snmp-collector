@@ -10,28 +10,28 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 ## Current Position
 
 Phase: 1 of 8 (Infrastructure Foundation)
-Plan: 2 of 5 in current phase
+Plan: 3 of 5 in current phase
 Status: In progress
-Last activity: 2026-03-05 — Completed 01-01-PLAN.md (project scaffold) and 01-02-PLAN.md (Docker Compose local dev telemetry stack)
+Last activity: 2026-03-05 — Completed 01-03-PLAN.md (correlation service, formatter, log enrichment processor)
 
-Progress: [░░░░░░░░░░] 5% (2/40 plans across all phases estimated)
+Progress: [░░░░░░░░░░] 7% (3/40 plans across all phases estimated)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
-- Average duration: ~2 min
-- Total execution time: ~4 min
+- Total plans completed: 3
+- Average duration: ~3 min
+- Total execution time: ~9 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-infrastructure-foundation | 2 | ~4 min | ~2 min |
+| 01-infrastructure-foundation | 3 | ~9 min | ~3 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (research/planning), 01-02 (deploy configs)
-- Trend: Fast execution for config-only tasks
+- Last 5 plans: 01-01 (scaffold), 01-02 (docker configs), 01-03 (telemetry classes)
+- Trend: Fast execution, source porting tasks slightly longer than config-only
 
 *Updated after each plan completion*
 
@@ -56,6 +56,10 @@ Recent decisions affecting current work:
 - [01-02]: otel/opentelemetry-collector-contrib image required (not core) — prometheusremotewrite is contrib-only
 - [01-02]: Prometheus --web.enable-remote-write-receiver flag mandatory — without it all remote_write pushes rejected with HTTP 405
 - [01-02]: resource_to_telemetry_conversion.enabled: true propagates OTel resource attributes as Prometheus labels
+- [01-03]: SnmpConsoleFormatter shows BOTH globalId and operationId (Simetra showed operationId OR globalId)
+- [01-03]: SnmpLogEnrichmentProcessor takes string role not Func<string> — static Phase 1, dynamic Phase 7
+- [01-03]: TelemetryConstants has single MeterName (no LeaderMeterName/InstanceMeterName split — no role-gating in Phase 1)
+- [01-03]: AsyncLocal<string?> _operationCorrelationId MUST be static — instance AsyncLocal does not flow through async context
 
 ### Pending Todos
 
@@ -69,5 +73,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-05
-Stopped at: Completed 01-01-PLAN.md — project scaffold complete, 2 of 5 phase plans done, next is 01-03
+Stopped at: Completed 01-03-PLAN.md — correlation service and telemetry classes complete, 3 of 5 phase plans done, next is 01-04 (DI extension methods)
 Resume file: None
