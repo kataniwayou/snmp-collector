@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 Phase: 1 of 8 (Infrastructure Foundation)
 Plan: 2 of 5 in current phase
 Status: In progress
-Last activity: 2026-03-05 — Completed 01-02-PLAN.md (Docker Compose local dev telemetry stack)
+Last activity: 2026-03-05 — Completed 01-01-PLAN.md (project scaffold) and 01-02-PLAN.md (Docker Compose local dev telemetry stack)
 
 Progress: [░░░░░░░░░░] 5% (2/40 plans across all phases estimated)
 
@@ -47,6 +47,11 @@ Recent decisions affecting current work:
 - [Init]: All instances poll and receive traps — leader election gates metric export only
 - [Init]: Counter delta engine is its own phase (Phase 4) — correctness risk, no shortcuts
 - [Init]: OTel cardinality must be locked in Phase 2 before any instruments are created in Phase 3
+- [01-01]: Microsoft.NET.Sdk (Generic Host) not Microsoft.NET.Sdk.Web — SnmpCollector has no HTTP surface
+- [01-01]: Quartz.Extensions.Hosting (not Quartz.AspNetCore) — correct package for Generic Host
+- [01-01]: SiteOptions.Role = "standalone" default replaces ILeaderElection for Phase 1; Phase 7 makes it dynamic
+- [01-01]: Microsoft.Extensions.Hosting 9.0.0 added explicitly — non-Web SDK requires it for Host.CreateApplicationBuilder
+- [01-01]: OtlpOptions.ServiceName defaults to "snmp-collector" (not "simetra-supervisor")
 - [01-02]: prometheusremotewrite exporter used (not prometheus scrape exporter) — PUSH-03 compliance
 - [01-02]: otel/opentelemetry-collector-contrib image required (not core) — prometheusremotewrite is contrib-only
 - [01-02]: Prometheus --web.enable-remote-write-receiver flag mandatory — without it all remote_write pushes rejected with HTTP 405
@@ -64,5 +69,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-05
-Stopped at: Completed 01-02-PLAN.md — Docker Compose local dev stack ready, next is 01-03
+Stopped at: Completed 01-01-PLAN.md — project scaffold complete, 2 of 5 phase plans done, next is 01-03
 Resume file: None
