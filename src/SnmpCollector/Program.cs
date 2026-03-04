@@ -1,9 +1,34 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
+using SnmpCollector.Extensions;
+using SnmpCollector.Pipeline;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-// Placeholder: service registrations will be added by subsequent plans.
+// DI registration order: Telemetry FIRST (registered first = disposed last = ForceFlush on shutdown)
+builder.AddSnmpTelemetry();
+builder.Services.AddSnmpConfiguration(builder.Configuration);
+builder.Services.AddSnmpScheduling(builder.Configuration);
 
-var app = builder.Build();
+var host = builder.Build();
 
-await app.RunAsync();
+// Seed first correlation ID before any Quartz job fires (before RunAsync starts hosted services)
+var correlationService = host.Services.GetRequiredService<ICorrelationService>();
+correlationService.SetCorrelationId(Guid.NewGuid().ToString("N"));
+
+try
+{
+    await host.RunAsync();
+}
+catch (OptionsValidationException ex)
+{
+    // Fail-fast: surface all validation failures clearly before the host accepts work
+    Console.Error.WriteLine("Configuration validation failed:");
+    foreach (var failure in ex.Failures)
+    {
+        Console.Error.WriteLine($"  - {failure}");
+    }
+
+    throw;
+}
