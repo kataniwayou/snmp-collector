@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 ## Current Position
 
 Phase: 3 of 8 (MediatR Pipeline and Instruments) — In progress
-Plan: 3 of 6 in phase 3
-Status: In progress — 03-03 complete, next: 03-04 (PublishBehavior / handler)
-Last activity: 2026-03-05 — Completed 03-03-PLAN.md (ValidationBehavior with OID regex + device registry check; OidResolutionBehavior via IOidMapService)
+Plan: 4 of 6 in phase 3
+Status: In progress — 03-04 complete, next: 03-05 (DI registration / wiring)
+Last activity: 2026-03-05 — Completed 03-04-PLAN.md (ISnmpMetricFactory, SnmpMetricFactory with ConcurrentDictionary instrument cache, OtelMetricHandler TypeCode dispatch)
 
-Progress: [███░░░░░░░] 30% (12/40 plans across all phases estimated)
+Progress: [████░░░░░░] 33% (13/40 plans across all phases estimated)
 
 ## Performance Metrics
 
@@ -29,7 +29,7 @@ Progress: [███░░░░░░░] 30% (12/40 plans across all phases es
 |-------|-------|-------|----------|
 | 01-infrastructure-foundation | 5 | ~20 min | ~4 min |
 | 02-device-registry-and-oid-map | 4 | ~14 min | ~3.5 min |
-| 03-mediatr-pipeline-and-instruments | 3 (of 6) | ~4 min | ~1.3 min |
+| 03-mediatr-pipeline-and-instruments | 4 (of 6) | ~6 min | ~1.5 min |
 
 **Recent Trend:**
 - Last 10 plans: 01-01 through 01-05 (foundation), 02-01 through 02-04, 03-01 (pipeline foundation)
@@ -88,6 +88,10 @@ Recent decisions affecting current work:
 - [03-03]: ValidationBehavior checks msg.DeviceName is null before calling TryGetDevice — poll path sets DeviceName at publish time; only trap path needs registry lookup
 - [03-03]: OidResolutionBehavior always calls next() even when MetricName resolves to Unknown sentinel — handlers decide what to do with unresolved OIDs; no silent data loss
 - [03-03]: Rejection uses return default! not throw — avoids triggering error counter path and keeps overhead low for rejected-but-not-exceptional events
+- [03-04]: ISnmpData has no shared numeric accessor -- cast to concrete Integer32/Gauge32/TimeTicks per switch arm; safe because switch is already discriminated on TypeCode
+- [03-04]: snmp_gauge and snmp_info stored as object in ConcurrentDictionary<string, object> -- Gauge<T> and Counter<T> share no common generic base in .NET OTel
+- [03-04]: Counter32/Counter64 deferred to Phase 4: LogDebug emitted, IncrementHandled NOT called, no metric recorded
+- [03-04]: snmp_info value label truncated at 128 chars (125 + "...") to bound OTel label cardinality
 
 ### Pending Todos
 
@@ -100,6 +104,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-05T01:38:33Z
-Stopped at: Completed 03-03-PLAN.md — ValidationBehavior (OID regex + IDeviceRegistry unknown-device check, Warning+IncrementRejected+short-circuit) and OidResolutionBehavior (IOidMapService.Resolve sets MetricName, always calls next) created in Pipeline/Behaviors/; build zero errors. Next: 03-04 (PublishBehavior / handler registration).
+Last session: 2026-03-05T01:40:06Z
+Stopped at: Completed 03-04-PLAN.md — ISnmpMetricFactory, SnmpMetricFactory (ConcurrentDictionary cache for snmp_gauge/snmp_info), OtelMetricHandler (TypeCode switch dispatch, Counter32/Counter64 deferred to Phase 4); build zero errors. Next: 03-05 (DI registration/wiring).
 Resume file: None
