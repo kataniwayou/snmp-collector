@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: snmp-collector-config
+  namespace: simetra
+data:
+  appsettings.k8s.json: |
+    {
+      "Site": {
+        "Name": "site-lab-k8s"
+      },
+      "Otlp": {
+        "Endpoint": "http://otel-collector:4317",
+        "ServiceName": "snmp-collector"
+      },
+      "SnmpListener": {
+        "BindAddress": "0.0.0.0",
+        "Port": 10162,
+        "CommunityString": "public"
+      },
+      "Lease": {
+        "Name": "snmp-collector-leader",
+        "Namespace": "simetra",
+        "DurationSeconds": 15,
+        "RenewIntervalSeconds": 10
+      },
+      "CorrelationJob": {
+        "IntervalSeconds": 30
+      },
+      "Liveness": {
+        "GraceMultiplier": 2.0
+      },
+      "Channels": {
+        "BoundedCapacity": 100
+      },
+      "Devices": [
+        {
+          "Name": "dummy-device-01",
+          "IpAddress": "127.0.0.1",
+          "MetricPolls": []
+        }
+      ],
+      "Logging": {
+        "EnableConsole": true
+      }
+    }
