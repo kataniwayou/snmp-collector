@@ -3,8 +3,14 @@ namespace SnmpCollector.Telemetry;
 public static class TelemetryConstants
 {
     /// <summary>
-    /// Primary meter for all SNMP collector metrics.
-    /// Phase 7 will split into leader-gated and instance meters if needed.
+    /// Pipeline metrics meter -- exported by ALL instances (pipeline + runtime health).
+    /// Used by PipelineMetricService for snmp.event.*, snmp.poll.*, snmp.trap.* counters.
     /// </summary>
     public const string MeterName = "SnmpCollector";
+
+    /// <summary>
+    /// Business metrics meter -- exported ONLY by the leader instance.
+    /// Used by SnmpMetricFactory for snmp_gauge, snmp_counter, snmp_info instruments.
+    /// </summary>
+    public const string LeaderMeterName = "SnmpCollector.Leader";
 }
