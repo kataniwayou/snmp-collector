@@ -9,6 +9,9 @@ namespace SnmpCollector.Telemetry;
 /// <summary>
 /// Creates and caches SNMP business metric instruments using a <see cref="ConcurrentDictionary{TKey,TValue}"/>.
 /// Instruments are created lazily on first use via GetOrAdd, guaranteeing single registration.
+/// Instruments are registered on the leader-gated meter (<see cref="TelemetryConstants.LeaderMeterName"/>)
+/// so that <c>MetricRoleGatedExporter</c> can suppress them on follower instances, ensuring
+/// snmp_gauge, snmp_counter, and snmp_info are exported only by the leader pod.
 /// </summary>
 public sealed class SnmpMetricFactory : ISnmpMetricFactory, IDisposable
 {
@@ -29,7 +32,7 @@ public sealed class SnmpMetricFactory : ISnmpMetricFactory, IDisposable
 
     public SnmpMetricFactory(IMeterFactory meterFactory, IOptions<SiteOptions> siteOptions)
     {
-        _meter = meterFactory.Create(TelemetryConstants.MeterName);
+        _meter = meterFactory.Create(TelemetryConstants.LeaderMeterName);
         _siteName = siteOptions.Value.Name;
     }
 
