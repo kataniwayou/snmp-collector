@@ -270,6 +270,8 @@ public sealed class SnmpTrapListenerServiceTests : IDisposable
 
         public void CompleteAll() { }
 
+        public Task WaitForDrainAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
         private sealed class CapturingWriter : System.Threading.Channels.ChannelWriter<VarbindEnvelope>
         {
             private readonly List<VarbindEnvelope> _list;
@@ -299,6 +301,8 @@ public sealed class SnmpTrapListenerServiceTests : IDisposable
         public IReadOnlyCollection<string> DeviceNames => [];
 
         public void CompleteAll() { }
+
+        public Task WaitForDrainAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
         private sealed class NoOpWriter : System.Threading.Channels.ChannelWriter<VarbindEnvelope>
         {

@@ -89,4 +89,14 @@ public sealed class DeviceChannelManager : IDeviceChannelManager
             channel.Writer.TryComplete();
         }
     }
+
+    /// <inheritdoc/>
+    public async Task WaitForDrainAsync(CancellationToken cancellationToken)
+    {
+        var completionTasks = _channels.Values
+            .Select(channel => channel.Reader.Completion)
+            .ToList();
+        await Task.WhenAll(completionTasks).WaitAsync(cancellationToken);
+        _logger.LogInformation("All device channels drained");
+    }
 }

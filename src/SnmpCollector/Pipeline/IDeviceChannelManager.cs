@@ -32,4 +32,13 @@ public interface IDeviceChannelManager
     /// and then finish. Called during graceful shutdown before the application exits.
     /// </summary>
     void CompleteAll();
+
+    /// <summary>
+    /// Asynchronously waits for all channel consumers to finish processing remaining items
+    /// after CompleteAll() has been called. Completes when every channel's Reader.Completion
+    /// task resolves (all items consumed and channel marked complete).
+    /// Used by GracefulShutdownService Step 4 to ensure in-flight data is fully processed.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token for time-budgeted drain.</param>
+    Task WaitForDrainAsync(CancellationToken cancellationToken);
 }

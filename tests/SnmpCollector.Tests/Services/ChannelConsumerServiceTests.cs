@@ -296,6 +296,11 @@ public sealed class ChannelConsumerServiceTests : IDisposable
         public ChannelReader<VarbindEnvelope> GetReader(string name) => _channel.Reader;
         public IReadOnlyCollection<string> DeviceNames => [_deviceName];
         public void CompleteAll() => _channel.Writer.TryComplete();
+
+        public async Task WaitForDrainAsync(CancellationToken cancellationToken)
+        {
+            await _channel.Reader.Completion.WaitAsync(cancellationToken);
+        }
     }
 
     /// <summary>Provides empty async enumerables without requiring System.Linq.Async.</summary>
