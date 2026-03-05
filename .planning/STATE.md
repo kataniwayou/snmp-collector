@@ -9,29 +9,30 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 
 ## Current Position
 
-Phase: 1 of 8 (Infrastructure Foundation) — COMPLETE
-Plan: 5 of 5 in phase 1
-Status: Phase complete
-Last activity: 2026-03-05 — Completed 01-05-PLAN.md (custom IValidateOptions validators, fail-fast verified)
+Phase: 2 of 8 (Device Registry and OID Map) — In progress
+Plan: 1 of 4 in phase 2
+Status: In progress
+Last activity: 2026-03-05 — Completed 02-01-PLAN.md (five options classes + two validators)
 
-Progress: [█░░░░░░░░░] 12.5% (5/40 plans across all phases estimated)
+Progress: [██░░░░░░░░] 15% (6/40 plans across all phases estimated)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
+- Total plans completed: 6
 - Average duration: ~4 min
-- Total execution time: ~20 min
+- Total execution time: ~24 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-infrastructure-foundation | 5 | ~20 min | ~4 min |
+| 02-device-registry-and-oid-map | 1 | ~4 min | ~4 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (scaffold), 01-02 (docker configs), 01-03 (telemetry classes), 01-04 (DI wiring), 01-05 (validators)
-- Trend: Consistent ~4 min execution; validation-only plans (01-05) match class-creation plans
+- Last 6 plans: 01-01 (scaffold), 01-02 (docker configs), 01-03 (telemetry classes), 01-04 (DI wiring), 01-05 (validators), 02-01 (options classes + validators)
+- Trend: Consistent ~4 min execution
 
 *Updated after each plan completion*
 
@@ -66,6 +67,10 @@ Recent decisions affecting current work:
 - [01-04]: OptionsValidationException catch wraps host.RunAsync(), not builder.Build() — ValidateOnStart fires during RunAsync host startup
 - [01-05]: IValidateOptions custom messages use "Section:Field is required" format for operational clarity — all future validators should follow same pattern
 - [01-05]: SiteOptions validation fires during builder.Build() (DI init for OTel logging processor), not during RunAsync — "Configuration validation failed:" prefix not shown for SiteOptions path; this is pre-existing behavior, not a bug
+- [02-01]: DeviceOptions.CommunityString is string? nullable — per-device override, null/empty falls back to SnmpListenerOptions.CommunityString; no validation needed (intentionally optional)
+- [02-01]: MetricPollOptions.Oids is List<string> (plain OID strings) — no OidEntryOptions wrapper; TypeCode determined at runtime from SNMP GET response
+- [02-01]: DeviceType removed from DeviceOptions entirely — SnmpCollector is device-agnostic, flat OID map replaces device modules
+- [02-01]: IPAddress.TryParse used in DevicesOptionsValidator for IP format check — catches hostnames/typos at startup
 
 ### Pending Todos
 
@@ -78,6 +83,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-05
-Stopped at: Completed 01-05-PLAN.md — Phase 1 Infrastructure Foundation fully complete. All 5 plans done. Next: Phase 2 OTel cardinality locking.
+Last session: 2026-03-05T00:05:25Z
+Stopped at: Completed 02-01-PLAN.md — Phase 2 options classes and validators complete. Next: 02-02 DeviceRegistry service.
 Resume file: None
