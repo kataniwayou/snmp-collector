@@ -125,14 +125,13 @@ Plans:
   3. A device that fails N consecutive polls is marked unreachable and logged — subsequent polls continue on schedule rather than accumulating backlog or flooding the log
   4. `snmp.poll.executed` increments after each completed poll job regardless of whether the device responded — success and failure are distinguishable via log level
   5. The Quartz thread pool size is calculated from device count and poll frequency so no job waits for a thread under the expected configuration
-**Plans**: TBD
+**Plans**: 4 plans in 4 waves
 
 Plans:
-- [ ] 06-01: MetricPollJob (Quartz IJob, DisallowConcurrentExecution) with SNMP GET and direct MediatR publish
-- [ ] 06-02: Per-device Quartz job registration from device registry (job identity metric-poll-{deviceName}-{pollIndex})
-- [ ] 06-03: Poll timeout at 80% of interval via CancellationToken
-- [ ] 06-04: Thread pool auto-scaling to job count
-- [ ] 06-05: Device unreachability detection — consecutive failure tracking, Warning logging, backoff
+- [ ] 06-01-PLAN.md — Foundation types: IDeviceUnreachabilityTracker, DeviceUnreachabilityTracker, PipelineMetricService poll counters (Wave 1)
+- [ ] 06-02-PLAN.md — MetricPollJob: Quartz IJob with SNMP GET, ISender.Send dispatch, timeout, unreachability (Wave 2)
+- [ ] 06-03-PLAN.md — DI wiring: AddSnmpScheduling thread pool sizing, job registration, PollSchedulerStartupService (Wave 3)
+- [ ] 06-04-PLAN.md — Unit tests: DeviceUnreachabilityTracker transitions, MetricPollJob dispatch and failure handling (Wave 4)
 
 ### Phase 7: Leader Election and Role-Gated Export
 **Goal**: In a multi-instance Kubernetes deployment, exactly one pod exports business metrics (snmp_gauge, snmp_counter, snmp_info) while all pods export pipeline and runtime metrics — with near-instant failover when the leader pod is terminated.
@@ -185,6 +184,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 3. MediatR Pipeline and Instruments | 6/6 | Complete | 2026-03-05 |
 | 4. Counter Delta Engine | 4/4 | Complete | 2026-03-05 |
 | 5. Trap Ingestion | 4/4 | Complete | 2026-03-05 |
-| 6. Poll Scheduling | 0/5 | Not started | - |
+| 6. Poll Scheduling | 0/4 | Not started | - |
 | 7. Leader Election and Role-Gated Export | 0/5 | Not started | - |
 | 8. Graceful Shutdown and Health Probes | 0/6 | Not started | - |
