@@ -19,7 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 5: Trap Ingestion** - UDP 162 listener receiving traps end-to-end through MediatR
 - [x] **Phase 6: Poll Scheduling** - Quartz-driven SNMP GET publishing to MediatR with unreachability handling
 - [x] **Phase 7: Leader Election and Role-Gated Export** - Exactly one pod exports business metrics in multi-instance deployment
-- [ ] **Phase 8: Graceful Shutdown and Health Probes** - Clean SIGTERM handling and K8s health probe coverage
+- [x] **Phase 8: Graceful Shutdown and Health Probes** - Clean SIGTERM handling and K8s health probe coverage
 
 ## Phase Details
 
@@ -162,15 +162,14 @@ Plans:
   3. The startup probe returns healthy only after the OID map is loaded and poll definitions are registered with Quartz — the application does not begin receiving traffic before it is ready
   4. The readiness probe returns healthy only when the trap listener is bound on UDP 162 and the device registry is populated
   5. The liveness probe returns unhealthy for a specific job when its last-execution timestamp is older than its configured interval multiplied by the grace multiplier — allowing K8s to restart the pod rather than leaving a silently stalled job running
-**Plans**: TBD
+**Plans**: 5 plans in 4 waves
 
 Plans:
-- [ ] 08-01: GracefulShutdownService registered last — 5-step shutdown with per-step CTS budgets
-- [ ] 08-02: Shutdown step verification — lease release (3s), listener stop (3s), scheduler standby (3s)
-- [ ] 08-03: Shutdown step verification — drain in-flight (8s), telemetry flush (5s, independent CTS)
-- [ ] 08-04: Job liveness vector — ILivenessVectorService stamped in every job finally block
-- [ ] 08-05: StartupHealthCheck, ReadinessHealthCheck, LivenessHealthCheck wired to ASP.NET health endpoints
-- [ ] 08-06: CorrelationJob (rotating global correlationId) and job interval registry for staleness thresholds
+- [x] 08-01-PLAN.md — Foundation types: ILivenessVectorService, IJobIntervalRegistry, LivenessOptions, WaitForDrainAsync (Wave 1)
+- [x] 08-02-PLAN.md — Health checks: StartupHealthCheck, ReadinessHealthCheck, LivenessHealthCheck (Wave 2)
+- [x] 08-03-PLAN.md — GracefulShutdownService: 5-step ordered shutdown with per-step CTS budgets (Wave 2)
+- [x] 08-04-PLAN.md — DI wiring: WebApplication, health endpoints, job stamps, Dockerfile (Wave 3)
+- [x] 08-05-PLAN.md — Unit tests: 23 new tests for all Phase 8 components (Wave 4)
 
 ## Progress
 
@@ -186,4 +185,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 5. Trap Ingestion | 4/4 | Complete | 2026-03-05 |
 | 6. Poll Scheduling | 4/4 | Complete | 2026-03-05 |
 | 7. Leader Election and Role-Gated Export | 5/5 | Complete | 2026-03-05 |
-| 8. Graceful Shutdown and Health Probes | 0/6 | Not started | - |
+| 8. Graceful Shutdown and Health Probes | 5/5 | Complete | 2026-03-05 |

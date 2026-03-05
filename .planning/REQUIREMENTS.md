@@ -87,22 +87,22 @@
 
 ### Graceful Shutdown
 
-- [ ] **SHUT-01**: GracefulShutdownService registered last in DI (stops first)
-- [ ] **SHUT-02**: Step 1: Release K8s lease (3s budget)
-- [ ] **SHUT-03**: Step 2: Stop SNMP trap listener (3s budget)
-- [ ] **SHUT-04**: Step 3: Scheduler standby — no new jobs fire (3s budget)
-- [ ] **SHUT-05**: Step 4: Drain in-flight operations (8s budget)
-- [ ] **SHUT-06**: Step 5: Flush telemetry with independent CTS — always runs (5s budget)
-- [ ] **SHUT-07**: Each step has its own CancellationTokenSource budget
-- [ ] **SHUT-08**: Total shutdown timeout: 30 seconds
+- [x] **SHUT-01**: GracefulShutdownService registered last in DI (stops first)
+- [x] **SHUT-02**: Step 1: Release K8s lease (3s budget)
+- [x] **SHUT-03**: Step 2: Stop SNMP trap listener (3s budget)
+- [x] **SHUT-04**: Step 3: Scheduler standby — no new jobs fire (3s budget)
+- [x] **SHUT-05**: Step 4: Drain in-flight operations (8s budget)
+- [x] **SHUT-06**: Step 5: Flush telemetry with independent CTS — always runs (5s budget)
+- [x] **SHUT-07**: Each step has its own CancellationTokenSource budget
+- [x] **SHUT-08**: Total shutdown timeout: 30 seconds
 
 ### Health Probes
 
-- [ ] **HLTH-01**: Startup probe: verify OID map loaded and poll definitions registered
-- [ ] **HLTH-02**: Readiness probe: verify trap listener running and registry populated
-- [ ] **HLTH-03**: Liveness probe: per-job staleness detection (age vs interval * grace multiplier)
-- [ ] **HLTH-04**: Job interval registry built at startup for staleness threshold calculation
-- [ ] **HLTH-05**: Liveness vector stamped by every job in finally block
+- [x] **HLTH-01**: Startup probe: verify OID map loaded and poll definitions registered
+- [x] **HLTH-02**: Readiness probe: verify trap listener running and registry populated
+- [x] **HLTH-03**: Liveness probe: per-job staleness detection (age vs interval * grace multiplier)
+- [x] **HLTH-04**: Job interval registry built at startup for staleness threshold calculation
+- [x] **HLTH-05**: Liveness vector stamped by every job in finally block
 
 ### Hardening
 
@@ -217,19 +217,19 @@
 | HA-06 | Phase 7 | Complete |
 | HA-07 | Phase 7 | Complete |
 | HA-08 | Phase 7 | Complete |
-| SHUT-01 | Phase 8 | Pending |
-| SHUT-02 | Phase 8 | Pending |
-| SHUT-03 | Phase 8 | Pending |
-| SHUT-04 | Phase 8 | Pending |
-| SHUT-05 | Phase 8 | Pending |
-| SHUT-06 | Phase 8 | Pending |
-| SHUT-07 | Phase 8 | Pending |
-| SHUT-08 | Phase 8 | Pending |
-| HLTH-01 | Phase 8 | Pending |
-| HLTH-02 | Phase 8 | Pending |
-| HLTH-03 | Phase 8 | Pending |
-| HLTH-04 | Phase 8 | Pending |
-| HLTH-05 | Phase 8 | Pending |
+| SHUT-01 | Phase 8 | Complete |
+| SHUT-02 | Phase 8 | Complete |
+| SHUT-03 | Phase 8 | Complete |
+| SHUT-04 | Phase 8 | Complete |
+| SHUT-05 | Phase 8 | Complete |
+| SHUT-06 | Phase 8 | Complete |
+| SHUT-07 | Phase 8 | Complete |
+| SHUT-08 | Phase 8 | Complete |
+| HLTH-01 | Phase 8 | Complete |
+| HLTH-02 | Phase 8 | Complete |
+| HLTH-03 | Phase 8 | Complete |
+| HLTH-04 | Phase 8 | Complete |
+| HLTH-05 | Phase 8 | Complete |
 | HARD-01 | Phase 5 | Complete |
 | HARD-02 | Phase 6 | Complete |
 | HARD-03 | Phase 6 | Complete |
@@ -249,4 +249,4 @@
 
 ---
 *Requirements defined: 2026-03-04*
-*Last updated: 2026-03-05 after Phase 7 completion*
+*Last updated: 2026-03-05 after Phase 8 completion*
