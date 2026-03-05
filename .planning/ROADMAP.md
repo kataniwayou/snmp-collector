@@ -18,7 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 4: Counter Delta Engine** - Correct delta computation including wrap-around and reboot detection
 - [x] **Phase 5: Trap Ingestion** - UDP 162 listener receiving traps end-to-end through MediatR
 - [x] **Phase 6: Poll Scheduling** - Quartz-driven SNMP GET publishing to MediatR with unreachability handling
-- [ ] **Phase 7: Leader Election and Role-Gated Export** - Exactly one pod exports business metrics in multi-instance deployment
+- [x] **Phase 7: Leader Election and Role-Gated Export** - Exactly one pod exports business metrics in multi-instance deployment
 - [ ] **Phase 8: Graceful Shutdown and Health Probes** - Clean SIGTERM handling and K8s health probe coverage
 
 ## Phase Details
@@ -143,14 +143,14 @@ Plans:
   3. Terminating the leader pod (SIGTERM) causes another pod to acquire the lease and resume business metric export within the Kubernetes lease renewal interval
   4. In a local (non-K8s) environment, `AlwaysLeaderElection` is selected automatically and business metrics are exported without any Kubernetes dependency
   5. The K8s lease election instance is registered as a single DI singleton that satisfies both `ILeaderElection` and `IHostedService` — verifiable by confirming both interfaces resolve to the same object
-**Plans**: TBD
+**Plans**: 5 plans in 4 waves
 
 Plans:
-- [ ] 07-01: ILeaderElection interface and AlwaysLeaderElection (local dev fallback)
-- [ ] 07-02: K8sLeaseElection BackgroundService with IsInCluster auto-detection
-- [ ] 07-03: MetricRoleGatedExporter — business meter gated on IsLeader, pipeline/runtime meters always pass
-- [ ] 07-04: DI singleton registration pattern — single instance satisfying both ILeaderElection and IHostedService
-- [ ] 07-05: Two-instance integration test confirming single business metric series in Prometheus
+- [x] 07-01-PLAN.md — ILeaderElection interface, AlwaysLeaderElection, TelemetryConstants.LeaderMeterName, LeaseOptions (Wave 1)
+- [x] 07-02-PLAN.md — K8sLeaseElection BackgroundService with Lease API and IsInCluster auto-detection (Wave 2)
+- [x] 07-03-PLAN.md — MetricRoleGatedExporter with ParentProvider reflection, SnmpMetricFactory LeaderMeterName (Wave 2)
+- [x] 07-04-PLAN.md — DI wiring: concrete-first singleton, dynamic role, AddReader replacing AddOtlpExporter (Wave 3)
+- [x] 07-05-PLAN.md — Unit tests: MetricRoleGatedExporter gating, DI singleton verification, SnmpMetricFactoryTests fix (Wave 4)
 
 ### Phase 8: Graceful Shutdown and Health Probes
 **Goal**: The application shuts down cleanly within 30 seconds under SIGTERM — releasing the K8s lease, draining in-flight work, and flushing telemetry — and K8s health probes correctly reflect application readiness and liveness.
@@ -185,5 +185,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 4. Counter Delta Engine | 4/4 | Complete | 2026-03-05 |
 | 5. Trap Ingestion | 4/4 | Complete | 2026-03-05 |
 | 6. Poll Scheduling | 4/4 | Complete | 2026-03-05 |
-| 7. Leader Election and Role-Gated Export | 0/5 | Not started | - |
+| 7. Leader Election and Role-Gated Export | 5/5 | Complete | 2026-03-05 |
 | 8. Graceful Shutdown and Health Probes | 0/6 | Not started | - |

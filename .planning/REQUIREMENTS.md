@@ -76,14 +76,14 @@
 
 ### Leader Election & HA
 
-- [ ] **HA-01**: `ILeaderElection` interface with `IsLeader` and `CurrentRole` properties
-- [ ] **HA-02**: `K8sLeaseElection` using Kubernetes Lease API (auto-detected via `IsInCluster()`)
-- [ ] **HA-03**: `AlwaysLeaderElection` for local development (non-K8s environments)
-- [ ] **HA-04**: All instances poll devices and receive traps (not leader-only)
-- [ ] **HA-05**: Only leader exports business metrics (snmp_gauge, snmp_counter, snmp_info)
-- [ ] **HA-06**: Pipeline metrics + System.Runtime exported by all instances
-- [ ] **HA-07**: `MetricRoleGatedExporter` filters business meter at export time
-- [ ] **HA-08**: Near-instant failover via explicit lease deletion on graceful shutdown
+- [x] **HA-01**: `ILeaderElection` interface with `IsLeader` and `CurrentRole` properties
+- [x] **HA-02**: `K8sLeaseElection` using Kubernetes Lease API (auto-detected via `IsInCluster()`)
+- [x] **HA-03**: `AlwaysLeaderElection` for local development (non-K8s environments)
+- [x] **HA-04**: All instances poll devices and receive traps (not leader-only)
+- [x] **HA-05**: Only leader exports business metrics (snmp_gauge, snmp_counter, snmp_info)
+- [x] **HA-06**: Pipeline metrics + System.Runtime exported by all instances
+- [x] **HA-07**: `MetricRoleGatedExporter` filters business meter at export time
+- [x] **HA-08**: Near-instant failover via explicit lease deletion on graceful shutdown
 
 ### Graceful Shutdown
 
@@ -209,14 +209,14 @@
 | LOG-05 | Phase 1 | Complete |
 | LOG-06 | Phase 1 | Complete |
 | LOG-07 | Phase 1 | Complete |
-| HA-01 | Phase 7 | Pending |
-| HA-02 | Phase 7 | Pending |
-| HA-03 | Phase 7 | Pending |
-| HA-04 | Phase 7 | Pending |
-| HA-05 | Phase 7 | Pending |
-| HA-06 | Phase 7 | Pending |
-| HA-07 | Phase 7 | Pending |
-| HA-08 | Phase 7 | Pending |
+| HA-01 | Phase 7 | Complete |
+| HA-02 | Phase 7 | Complete |
+| HA-03 | Phase 7 | Complete |
+| HA-04 | Phase 7 | Complete |
+| HA-05 | Phase 7 | Complete |
+| HA-06 | Phase 7 | Complete |
+| HA-07 | Phase 7 | Complete |
+| HA-08 | Phase 7 | Complete |
 | SHUT-01 | Phase 8 | Pending |
 | SHUT-02 | Phase 8 | Pending |
 | SHUT-03 | Phase 8 | Pending |
@@ -249,4 +249,4 @@
 
 ---
 *Requirements defined: 2026-03-04*
-*Last updated: 2026-03-05 after Phase 6 completion*
+*Last updated: 2026-03-05 after Phase 7 completion*
