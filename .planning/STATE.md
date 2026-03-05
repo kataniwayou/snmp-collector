@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 Phase: 9 of 9 (Containerized Integration Testing) — Complete
 Plan: 3 of 3 complete
 Status: All phases complete. Milestone v1.0 ready for audit.
-Last activity: 2026-03-05 — Completed quick task 008: Verify logs business logic + explain Role standalone
+Last activity: 2026-03-05 — Completed quick task 009: Remove redundant Role, simplify Site options
 
 Progress: [██████████████████████] 100% (40/40 plans across all phases)
 
@@ -196,6 +196,7 @@ None yet.
 | 006 | Wire CorrelationId propagation into job and trap paths | 2026-03-05 | 0b48083 | [006-wire-correlationid-propagation](./quick/006-wire-correlationid-propagation/) |
 | 007 | Verify K8s observability stack (console logs, ES, Prometheus) | 2026-03-05 | — (verification only) | [007-verify-k8s-observability-stack](./quick/007-verify-k8s-observability-stack/) |
 | 008 | Verify logs business logic + explain Role standalone | 2026-03-05 | — (verification only) | [008-verify-logs-business-logic-and-role](./quick/008-verify-logs-business-logic-and-role/) |
+| 009 | Remove redundant Role, simplify Site options | 2026-03-05 | 1428f21 | [009-remove-role-simplify-site-options](./quick/009-remove-role-simplify-site-options/) |
 
 ### Roadmap Evolution
 
