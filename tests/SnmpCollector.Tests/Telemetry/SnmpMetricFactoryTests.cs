@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using SnmpCollector.Configuration;
 using SnmpCollector.Telemetry;
+using SnmpCollector.Tests.Helpers;
 using Xunit;
 
 namespace SnmpCollector.Tests.Telemetry;
@@ -11,7 +12,9 @@ namespace SnmpCollector.Tests.Telemetry;
 /// Tests the real <see cref="SnmpMetricFactory"/> to verify OTel instrument tags
 /// that are not observable through <see cref="ISnmpMetricFactory"/> (e.g., site_name).
 /// Uses <see cref="MeterListener"/> to capture actual instrument recordings.
+/// Placed in NonParallelMeterTests collection to prevent cross-test meter contamination.
 /// </summary>
+[Collection(NonParallelCollection.Name)]
 public sealed class SnmpMetricFactoryTests : IDisposable
 {
     private readonly ServiceProvider _sp;

@@ -108,8 +108,9 @@ public sealed class SnmpTrapListenerService : BackgroundService
     /// <summary>
     /// Parses a UDP datagram, authenticates the sender, and routes each varbind to the
     /// device's channel. Invalid packets and unauthorized senders are dropped with telemetry.
+    /// Internal for unit testing via InternalsVisibleTo.
     /// </summary>
-    private void ProcessDatagram(UdpReceiveResult result)
+    internal void ProcessDatagram(UdpReceiveResult result)
     {
         IList<ISnmpMessage> messages;
         try
