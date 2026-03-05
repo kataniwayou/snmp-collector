@@ -14,6 +14,7 @@ using SnmpCollector.Configuration.Validators;
 using SnmpCollector.Jobs;
 using SnmpCollector.Pipeline;
 using SnmpCollector.Pipeline.Behaviors;
+using SnmpCollector.Services;
 using SnmpCollector.Telemetry;
 
 namespace SnmpCollector.Extensions;
@@ -199,6 +200,12 @@ public static class ServiceCollectionExtensions
             .Configure<IConfiguration>((opts, config) =>
                 config.GetSection(OidMapOptions.SectionName).Bind(opts.Entries));
 
+        // --- Phase 5: Channel configuration ---
+        services.AddOptions<ChannelsOptions>()
+            .Bind(configuration.GetSection(ChannelsOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
         // --- Phase 2 pipeline singletons ---
         // DeviceRegistry depends on IOptions<DevicesOptions> and IOptions<SnmpListenerOptions>.
         // OidMapService depends on IOptionsMonitor<OidMapOptions> for hot-reload on appsettings change.
@@ -251,6 +258,13 @@ public static class ServiceCollectionExtensions
 
         // Counter delta engine: singleton, maintains per-OID+agent state for delta computation.
         services.AddSingleton<ICounterDeltaEngine, CounterDeltaEngine>();
+
+        // --- Phase 5: Trap ingestion services ---
+        // Registration order: listener before consumer (start order = registration order).
+        services.AddSingleton<IDeviceChannelManager, DeviceChannelManager>();
+
+        services.AddHostedService<SnmpTrapListenerService>();
+        services.AddHostedService<ChannelConsumerService>();
 
         return services;
     }
