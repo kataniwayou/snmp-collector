@@ -35,7 +35,7 @@ public sealed class SnmpMetricFactoryTests : IDisposable
         _listener = new MeterListener();
         _listener.InstrumentPublished = (instrument, listener) =>
         {
-            if (instrument.Meter.Name == TelemetryConstants.MeterName)
+            if (instrument.Meter.Name == TelemetryConstants.LeaderMeterName)
                 listener.EnableMeasurementEvents(instrument);
         };
         _listener.SetMeasurementEventCallback<double>((instrument, value, tags, _) =>
