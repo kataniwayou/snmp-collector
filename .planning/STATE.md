@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Every SNMP OID — from a trap or a poll — gets resolved, typed correctly, and pushed to Prometheus where it's queryable in Grafana within seconds.
-**Current focus:** Phase 9 added — containerized integration testing. Phases 1-8 complete.
+**Current focus:** All 9 phases complete. Milestone v1.0 ready for audit.
 
 ## Current Position
 
-Phase: 9 of 9 (Containerized Integration Testing) — In progress
-Plan: 2 of 3 complete
-Status: Phase 9 in progress — SnmpCollector K8s manifests (ConfigMap, Deployment, Service) created.
-Last activity: 2026-03-05 — Completed 09-02: Create SnmpCollector K8s manifests
+Phase: 9 of 9 (Containerized Integration Testing) — Complete
+Plan: 3 of 3 complete
+Status: All phases complete. Milestone v1.0 ready for audit.
+Last activity: 2026-03-05 — Completed Phase 9: Containerized Integration Testing verified
 
-Progress: [█████████████████████░] 97% (39/40 plans across all phases)
+Progress: [██████████████████████] 100% (40/40 plans across all phases)
 
 ## Performance Metrics
 
@@ -35,11 +35,12 @@ Progress: [█████████████████████░] 9
 | 06-poll-scheduling | 4 | ~14 min | ~3.5 min |
 | 07-leader-election-and-role-gated-export | 5 | ~15 min | ~3 min |
 | 08-graceful-shutdown-and-health-probes | 5 | ~15 min | ~3 min |
-| 09-containerized-integration-testing | 1/3 | ~1 min | ~1 min |
+| 09-containerized-integration-testing | 3/3 | ~15 min | ~5 min |
 
 **Recent Trend:**
-- 38/40 plans complete across 9 phases
+- 40/40 plans complete across 9 phases
 - Trend: Consistent ~1-8 min execution
+- All phases verified and complete
 
 *Updated after each plan completion*
 
@@ -174,6 +175,11 @@ Recent decisions affecting current work:
 - [09-01]: Prometheus global block retained with empty scrape_configs removed — Prometheus requires scrape_interval/evaluation_interval even in remote_write-only mode
 - [09-01]: OTel Collector prom-exporter port 8889 removed from Deployment and Service — no active listener in push model, port was dead after prometheusremotewrite switch
 
+- [09-03]: .dockerignore required at repo root — Windows obj/project.assets.json leaks fallback package folder paths into Linux container, causing NuGet.Packaging.Core.PackagingException
+- [09-03]: SnmpCollector.csproj needs explicit <Content Include="appsettings*.json" CopyToPublishDirectory="PreserveNewest"/> — Microsoft.NET.Sdk (non-Web) does not auto-publish appsettings files
+- [09-03]: Dockerfile sed for Devices array removed — base appsettings.json already has empty Devices[]; sed pattern corrupted JSON when array was already empty
+- [09-03]: OTel metric names in Prometheus use dotnet_ prefix (not process_runtime_dotnet_) and snmp_ prefix for pipeline counters — prometheusremotewrite normalizes names
+
 ### Pending Todos
 
 None yet.
@@ -204,5 +210,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-05
-Stopped at: Completed 09-02-PLAN.md (Phase 9, Plan 2 of 3) — SnmpCollector K8s manifests ready for kubectl apply.
+Stopped at: Phase 9 complete — all 40 plans across 9 phases verified. Milestone v1.0 ready for audit.
 Resume file: None

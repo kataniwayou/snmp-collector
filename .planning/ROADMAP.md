@@ -20,7 +20,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 6: Poll Scheduling** - Quartz-driven SNMP GET publishing to MediatR with unreachability handling
 - [x] **Phase 7: Leader Election and Role-Gated Export** - Exactly one pod exports business metrics in multi-instance deployment
 - [x] **Phase 8: Graceful Shutdown and Health Probes** - Clean SIGTERM handling and K8s health probe coverage
-- [ ] **Phase 9: Containerized Integration Testing** - K8s integration tests using Docker Desktop stack, observability verification, namespace isolation
+- [x] **Phase 9: Containerized Integration Testing** - K8s integration tests using Docker Desktop stack, observability verification, namespace isolation
 
 ## Phase Details
 
@@ -178,9 +178,9 @@ Plans:
 **Plans:** 3 plans in 2 waves
 
 Plans:
-- [ ] 09-01-PLAN.md — Fix monitoring stack: OTel Collector prometheusremotewrite + Prometheus remote_write receiver (Wave 1)
-- [ ] 09-02-PLAN.md — Create SnmpCollector K8s manifests: ConfigMap, Deployment (3 replicas), Service (Wave 1)
-- [ ] 09-03-PLAN.md — Deployment guide + human verification: build, deploy, validate metrics and leader failover (Wave 2)
+- [x] 09-01-PLAN.md — Fix monitoring stack: OTel Collector prometheusremotewrite + Prometheus remote_write receiver (Wave 1)
+- [x] 09-02-PLAN.md — Create SnmpCollector K8s manifests: ConfigMap, Deployment (3 replicas), Service (Wave 1)
+- [x] 09-03-PLAN.md — Deployment guide + human verification: build, deploy, validate metrics and leader failover (Wave 2)
 
 ## Progress
 
@@ -197,4 +197,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 6. Poll Scheduling | 4/4 | Complete | 2026-03-05 |
 | 7. Leader Election and Role-Gated Export | 5/5 | Complete | 2026-03-05 |
 | 8. Graceful Shutdown and Health Probes | 5/5 | Complete | 2026-03-05 |
-| 9. Containerized Integration Testing | 0/3 | Planned | — |
+| 9. Containerized Integration Testing | 3/3 | Complete | 2026-03-05 |
