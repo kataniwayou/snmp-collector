@@ -180,6 +180,7 @@ None yet.
 |---|-------------|------|--------|-----------|
 | 001 | Verify SNMPv2c only (SNMPv3 not supported) | 2026-03-05 | — (verification only) | [001-verify-snmpv2c-only](./quick/001-verify-snmpv2c-only/) |
 | 002 | Verify CorrelationId flow (generation, propagation, storage) | 2026-03-05 | — (verification only) | [002-verify-correlationid-flow](./quick/002-verify-correlationid-flow/) |
+| 003 | Verify logging framework (OTel, enrichment, console toggle, log levels) | 2026-03-05 | — (verification only) | [003-verify-logging-framework](./quick/003-verify-logging-framework/) |
 
 ### Blockers/Concerns
 
