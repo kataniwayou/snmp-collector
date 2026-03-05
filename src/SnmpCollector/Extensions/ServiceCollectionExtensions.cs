@@ -125,17 +125,28 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Binds all Phase 1 options classes with ValidateDataAnnotations and ValidateOnStart
-    /// for fail-fast configuration validation.
+    /// Binds all Phase 1 and Phase 2 options classes with fail-fast configuration validation,
+    /// and registers Phase 2 pipeline singletons (DeviceRegistry, OidMapService).
     /// <para>
     /// Phase 1 options: SiteOptions, OtlpOptions, LoggingOptions, CorrelationJobOptions.
-    /// Custom IValidateOptions validators are deferred to Plan 01-05.
+    /// Phase 2 options: DevicesOptions, SnmpListenerOptions, OidMapOptions.
+    /// Phase 2 services: IDeviceRegistry (DeviceRegistry), IOidMapService (OidMapService).
+    /// </para>
+    /// <para>
+    /// DevicesOptions uses Configure&lt;IConfiguration&gt; delegate binding because the JSON
+    /// "Devices" key is a top-level array, not an object -- standard .Bind() cannot map
+    /// array children to a POCO with a named list property.
+    /// OidMapOptions uses the same pattern: "OidMap" key is a flat JSON object of OID->name
+    /// pairs that must be bound into <see cref="OidMapOptions.Entries"/> directly.
+    /// Both are registered without ValidateOnStart (DevicesOptions: empty is valid;
+    /// OidMapOptions: empty map is valid -- unknown OIDs resolve to "Unknown").
     /// </para>
     /// </summary>
     public static IServiceCollection AddSnmpConfiguration(
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        // --- Phase 1 options ---
         services.AddOptions<SiteOptions>()
             .Bind(configuration.GetSection(SiteOptions.SectionName))
             .ValidateDataAnnotations()
@@ -156,9 +167,40 @@ public static class ServiceCollectionExtensions
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
-        // Custom IValidateOptions for cross-field validation
+        // Custom IValidateOptions for cross-field validation (Phase 1)
         services.AddSingleton<IValidateOptions<SiteOptions>, SiteOptionsValidator>();
         services.AddSingleton<IValidateOptions<OtlpOptions>, OtlpOptionsValidator>();
+
+        // --- Phase 2 options ---
+        // DevicesOptions: "Devices" is a JSON array; bind list directly into the Devices property.
+        // Empty device list is valid (pod with no poll targets still receives traps).
+        // ValidateOnStart enabled: DevicesOptionsValidator fires at startup to catch config errors early.
+        services.AddOptions<DevicesOptions>()
+            .Configure<IConfiguration>((opts, config) =>
+                config.GetSection(DevicesOptions.SectionName).Bind(opts.Devices))
+            .ValidateOnStart();
+
+        services.AddSingleton<IValidateOptions<DevicesOptions>, DevicesOptionsValidator>();
+
+        // SnmpListenerOptions: standard object section with DataAnnotations on all fields.
+        services.AddOptions<SnmpListenerOptions>()
+            .Bind(configuration.GetSection(SnmpListenerOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services.AddSingleton<IValidateOptions<SnmpListenerOptions>, SnmpListenerOptionsValidator>();
+
+        // OidMapOptions: "OidMap" is a flat JSON object of OID->name pairs.
+        // Bind the section directly into Entries dictionary. No ValidateOnStart -- empty map is valid.
+        services.AddOptions<OidMapOptions>()
+            .Configure<IConfiguration>((opts, config) =>
+                config.GetSection(OidMapOptions.SectionName).Bind(opts.Entries));
+
+        // --- Phase 2 pipeline singletons ---
+        // DeviceRegistry depends on IOptions<DevicesOptions> and IOptions<SnmpListenerOptions>.
+        // OidMapService depends on IOptionsMonitor<OidMapOptions> for hot-reload on appsettings change.
+        services.AddSingleton<IDeviceRegistry, DeviceRegistry>();
+        services.AddSingleton<IOidMapService, OidMapService>();
 
         return services;
     }
