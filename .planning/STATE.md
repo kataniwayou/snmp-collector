@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Every SNMP OID — from a trap or a poll — gets resolved, typed correctly, and pushed to Prometheus where it's queryable in Grafana within seconds.
-**Current focus:** Phase 3 — MediatR Pipeline (Phase 2 complete — 4/4 plans done)
+**Current focus:** Phase 4 — Counter Delta Engine (Phase 3 complete — 6/6 plans done)
 
 ## Current Position
 
-Phase: 3 of 8 (MediatR Pipeline and Instruments) — In progress
-Plan: 5 of 6 in phase 3
-Status: In progress — 03-05 complete, next: 03-06 (final Phase 3 plan)
-Last activity: 2026-03-05 — Completed 03-05-PLAN.md (AddSnmpPipeline extension method, Program.cs wiring, all Phase 3 services registered in DI)
+Phase: 4 of 8 (Counter Delta Engine) — Not started
+Plan: 0 of N in phase 4
+Status: Phase 3 complete — all 6 plans done; ready for Phase 4
+Last activity: 2026-03-05 — Completed 03-06-PLAN.md (49 tests passing; SnmpOidReceived IRequest<Unit> bug fix; all 5 Phase 3 SC verified)
 
-Progress: [████░░░░░░] 35% (14/40 plans across all phases estimated)
+Progress: [█████░░░░░] 38% (15/40 plans across all phases estimated)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9
+- Total plans completed: 10
 - Average duration: ~3-5 min
-- Total execution time: ~35 min
+- Total execution time: ~49 min
 
 **By Phase:**
 
@@ -29,10 +29,10 @@ Progress: [████░░░░░░] 35% (14/40 plans across all phases es
 |-------|-------|-------|----------|
 | 01-infrastructure-foundation | 5 | ~20 min | ~4 min |
 | 02-device-registry-and-oid-map | 4 | ~14 min | ~3.5 min |
-| 03-mediatr-pipeline-and-instruments | 5 (of 6) | ~10 min | ~2 min |
+| 03-mediatr-pipeline-and-instruments | 6 (complete) | ~24 min | ~4 min |
 
 **Recent Trend:**
-- Last 10 plans: 01-01 through 01-05 (foundation), 02-01 through 02-04, 03-01 (pipeline foundation)
+- Last 10 plans: 01-01 through 01-05 (foundation), 02-01 through 02-04, 03-01 through 03-06
 - Trend: Consistent ~2-6 min execution
 
 *Updated after each plan completion*
@@ -93,8 +93,12 @@ Recent decisions affecting current work:
 - [03-04]: Counter32/Counter64 deferred to Phase 4: LogDebug emitted, IncrementHandled NOT called, no metric recorded
 - [03-04]: snmp_info value label truncated at 128 chars (125 + "...") to bound OTel label cardinality
 - [03-05]: AddSnmpPipeline inserted after AddSnmpConfiguration — OidResolutionBehavior/ValidationBehavior depend on IOidMapService/IDeviceRegistry registered by AddSnmpConfiguration
-- [03-05]: TaskWhenAllPublisher set via cfg.NotificationPublisher = new ..., not AddSingleton — MediatR 12.x reads instance from MediatRServiceConfiguration.NotificationPublisher directly
-- [03-05]: 4 AddOpenBehavior calls ordered Logging->Exception->Validation->OidResolution matches PIPE-08: first registered = outermost = runs first
+- [03-06]: SnmpOidReceived changed from INotification to IRequest<Unit> — MediatR IPipelineBehavior only fires for IRequest<T> via ISender.Send; INotification via IPublisher.Publish bypasses all behaviors entirely (silent dead code bug)
+- [03-06]: OtelMetricHandler changed from INotificationHandler to IRequestHandler<SnmpOidReceived, Unit> — required for ISender.Send dispatch path
+- [03-06]: Behavior constraints changed from 'where T : INotification' to 'where T : notnull' — required since SnmpOidReceived no longer implements INotification
+- [03-06]: TaskWhenAllPublisher removed from AddSnmpPipeline — not applicable to IRequest<Unit> request/response pipeline
+- [03-06]: RequestHandlerDelegate<TResponse> in MediatR 12.5.0 takes CancellationToken parameter — test lambdas must use 'ct =>' not '() =>'
+- [03-06]: Phase 5/6 MUST use ISender.Send(snmpOidReceived) not IPublisher.Publish — IPublisher.Publish bypasses the entire behavior pipeline
 
 ### Pending Todos
 
@@ -107,6 +111,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-05T01:44:33Z
-Stopped at: Completed 03-05-PLAN.md — AddSnmpPipeline extension method (MediatR + 4 ordered behaviors + TaskWhenAllPublisher singleton + PipelineMetricService + ISnmpMetricFactory), Program.cs wired; build zero errors. Next: 03-06 (final Phase 3 plan).
+Last session: 2026-03-05T02:05:59Z
+Stopped at: Completed 03-06-PLAN.md — 49 tests all passing; SnmpOidReceived changed to IRequest<Unit> (bug fix: behaviors were dead code with INotification); Phase 3 complete. Next: Phase 4 Counter Delta Engine.
 Resume file: None
