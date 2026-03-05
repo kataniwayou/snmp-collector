@@ -17,11 +17,11 @@
 
 ### OID Map
 
-- [ ] **MAP-01**: Flat `Dictionary<string, string>` in appsettings under `OidMap` section
-- [ ] **MAP-02**: Maps OID string to metric_name (e.g., `"1.3.6.1.2.1.25.3.3.1.2": "hrProcessorLoad"`)
-- [ ] **MAP-03**: OID in map resolves to metric_name; OID not in map resolves to "Unknown"
-- [ ] **MAP-04**: Shared by traps and polls — no device distinction
-- [ ] **MAP-05**: Hot-reloadable without app restart (file change detection or config reload)
+- [x] **MAP-01**: Flat `Dictionary<string, string>` in appsettings under `OidMap` section
+- [x] **MAP-02**: Maps OID string to metric_name (e.g., `"1.3.6.1.2.1.25.3.3.1.2": "hrProcessorLoad"`)
+- [x] **MAP-03**: OID in map resolves to metric_name; OID not in map resolves to "Unknown"
+- [x] **MAP-04**: Shared by traps and polls — no device distinction
+- [x] **MAP-05**: Hot-reloadable without app restart (file change detection or config reload)
 
 ### MediatR Pipeline
 
@@ -119,10 +119,10 @@
 
 ### Device Configuration
 
-- [ ] **DEVC-01**: Per-device configuration in appsettings with Name, IpAddress, and MetricPolls
-- [ ] **DEVC-02**: Each MetricPoll entry has an OID list and IntervalSeconds
-- [ ] **DEVC-03**: Device registry with O(1) lookup by IP (for traps) and by name (for polls)
-- [ ] **DEVC-04**: Quartz job identity: `metric-poll-{deviceName}-{pollIndex}`
+- [x] **DEVC-01**: Per-device configuration in appsettings with Name, IpAddress, and MetricPolls
+- [x] **DEVC-02**: Each MetricPoll entry has an OID list and IntervalSeconds
+- [x] **DEVC-03**: Device registry with O(1) lookup by IP (for traps) and by name (for polls)
+- [x] **DEVC-04**: Quartz job identity: `metric-poll-{deviceName}-{pollIndex}`
 
 ## v2 Requirements
 
@@ -168,11 +168,11 @@
 | COLL-05 | Phase 6 | Pending |
 | COLL-06 | Phase 6 | Pending |
 | COLL-07 | Phase 3 | Pending |
-| MAP-01 | Phase 2 | Pending |
-| MAP-02 | Phase 2 | Pending |
-| MAP-03 | Phase 2 | Pending |
-| MAP-04 | Phase 2 | Pending |
-| MAP-05 | Phase 2 | Pending |
+| MAP-01 | Phase 2 | Complete |
+| MAP-02 | Phase 2 | Complete |
+| MAP-03 | Phase 2 | Complete |
+| MAP-04 | Phase 2 | Complete |
+| MAP-05 | Phase 2 | Complete |
 | PIPE-01 | Phase 3 | Pending |
 | PIPE-02 | Phase 3 | Pending |
 | PIPE-03 | Phase 3 | Pending |
@@ -237,10 +237,10 @@
 | PUSH-01 | Phase 1 | Complete |
 | PUSH-02 | Phase 1 | Complete |
 | PUSH-03 | Phase 1 | Complete |
-| DEVC-01 | Phase 2 | Pending |
-| DEVC-02 | Phase 2 | Pending |
-| DEVC-03 | Phase 2 | Pending |
-| DEVC-04 | Phase 2 | Pending |
+| DEVC-01 | Phase 2 | Complete |
+| DEVC-02 | Phase 2 | Complete |
+| DEVC-03 | Phase 2 | Complete |
+| DEVC-04 | Phase 2 | Complete |
 
 **Coverage:**
 - v1 requirements: 80 total
@@ -249,4 +249,4 @@
 
 ---
 *Requirements defined: 2026-03-04*
-*Last updated: 2026-03-05 after Phase 1 completion*
+*Last updated: 2026-03-05 after Phase 2 completion*

@@ -13,7 +13,7 @@ This roadmap builds a K8s-native SNMP monitoring agent from infrastructure up to
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Infrastructure Foundation** - Running host with OTel SDK, structured logging, and push pipeline wired
-- [ ] **Phase 2: Device Registry and OID Map** - All lookup structures built, cardinality locked, config validated
+- [x] **Phase 2: Device Registry and OID Map** - All lookup structures built, cardinality locked, config validated
 - [ ] **Phase 3: MediatR Pipeline and Instruments** - Full behavior chain and all metric instruments verified in isolation
 - [ ] **Phase 4: Counter Delta Engine** - Correct delta computation including wrap-around and reboot detection
 - [ ] **Phase 5: Trap Ingestion** - UDP 162 listener receiving traps end-to-end through MediatR
@@ -52,13 +52,13 @@ Plans:
   3. Modifying the OID map in appsettings (adding or changing an entry) takes effect without application restart
   4. The label taxonomy (`site_name`, `metric_name`, `oid`, `agent`, `source`) is documented with a cardinality estimate against the target device fleet, and all values are bounded (no raw IP strings or OID strings as label values outside the `oid` label)
   5. Quartz job identities (`metric-poll-{deviceName}-{pollIndex}`) are derivable from device config at startup
-**Plans**: TBD
+**Plans**: 4 plans in 3 waves
 
 Plans:
-- [ ] 02-01: Device options model and device registry with dual-keyed lookup (IP + name)
-- [ ] 02-02: OID map loading from appsettings with hot-reload via IOptionsMonitor
-- [ ] 02-03: OID resolution logic with "Unknown" fallback and unit tests
-- [ ] 02-04: Label taxonomy design — cardinality audit against NPB/OBP device fleet
+- [x] 02-01-PLAN.md — Config options classes + validators: DeviceOptions, MetricPollOptions, DevicesOptions, OidMapOptions, SnmpListenerOptions (Wave 1)
+- [x] 02-02-PLAN.md — Pipeline classes + DI wiring: DeviceRegistry, OidMapService, DeviceInfo, MetricPollInfo (Wave 2)
+- [x] 02-03-PLAN.md — TDD: OID resolution and device registry unit tests with test project setup (Wave 3)
+- [x] 02-04-PLAN.md — CardinalityAuditService: startup cardinality estimate and label taxonomy logging (Wave 3)
 
 ### Phase 3: MediatR Pipeline and Instruments
 **Goal**: The complete MediatR behavior chain and all three OTel metric instruments are built, wired, and unit-testable with synthetic `SnmpOidReceived` notifications — so the pipeline is fully verified before any real network traffic arrives.
@@ -182,7 +182,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Infrastructure Foundation | 5/5 | Complete | 2026-03-05 |
-| 2. Device Registry and OID Map | 0/4 | Not started | - |
+| 2. Device Registry and OID Map | 4/4 | Complete | 2026-03-05 |
 | 3. MediatR Pipeline and Instruments | 0/7 | Not started | - |
 | 4. Counter Delta Engine | 0/4 | Not started | - |
 | 5. Trap Ingestion | 0/4 | Not started | - |
