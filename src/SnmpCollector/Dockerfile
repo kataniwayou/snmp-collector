@@ -18,12 +18,6 @@ RUN dotnet publish src/SnmpCollector/SnmpCollector.csproj \
     --no-restore \
     -o /app/publish
 
-# Empty the Devices array in published appsettings.json.
-# .NET config flattens arrays to indexed keys (Devices:0:Name, etc.).
-# An empty overlay array produces zero keys, so base entries survive merge.
-# Emptying the base array ensures ConfigMap "Devices": [] actually works.
-RUN sed -i '/"Devices": \[/,/^  \],/c\  "Devices": [],' /app/publish/appsettings.json
-
 # Stage 2: Runtime
 # CRITICAL: Must use aspnet image (not runtime) because FrameworkReference
 # to Microsoft.AspNetCore.App requires the ASP.NET Core shared framework.
