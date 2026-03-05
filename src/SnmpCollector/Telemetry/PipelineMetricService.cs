@@ -6,7 +6,7 @@ using SnmpCollector.Configuration;
 namespace SnmpCollector.Telemetry;
 
 /// <summary>
-/// Singleton service that owns all 9 pipeline counter instruments on the SnmpCollector meter.
+/// Singleton service that owns all 11 pipeline counter instruments on the SnmpCollector meter.
 /// Creating counters here (once) avoids duplicate instrument registration and provides a single
 /// injection point for all pipeline behaviors and handlers that need to record metrics.
 /// </summary>
@@ -42,6 +42,12 @@ public sealed class PipelineMetricService : IDisposable
     // PMET-09: counts varbind envelopes dropped from per-device BoundedChannel (backpressure)
     private readonly Counter<long> _trapDropped;
 
+    // Phase 6: counts transitions from healthy to unreachable (3 consecutive failures)
+    private readonly Counter<long> _pollUnreachable;
+
+    // Phase 6: counts transitions from unreachable back to healthy (first success after unreachable)
+    private readonly Counter<long> _pollRecovered;
+
     public PipelineMetricService(IMeterFactory meterFactory, IOptions<SiteOptions> siteOptions)
     {
         _meter = meterFactory.Create(TelemetryConstants.MeterName);
@@ -56,6 +62,9 @@ public sealed class PipelineMetricService : IDisposable
         _trapAuthFailed    = _meter.CreateCounter<long>("snmp.trap.auth_failed");
         _trapUnknownDevice = _meter.CreateCounter<long>("snmp.trap.unknown_device");
         _trapDropped       = _meter.CreateCounter<long>("snmp.trap.dropped");
+
+        _pollUnreachable = _meter.CreateCounter<long>("snmp.poll.unreachable");
+        _pollRecovered   = _meter.CreateCounter<long>("snmp.poll.recovered");
     }
 
     /// <summary>PMET-01: Increment the count of published pipeline notifications by 1.</summary>
@@ -105,6 +114,20 @@ public sealed class PipelineMetricService : IDisposable
     /// </summary>
     public void IncrementTrapDropped(string deviceName)
         => _trapDropped.Add(1, new TagList { { "site_name", _siteName }, { "device_name", deviceName } });
+
+    /// <summary>
+    /// Phase 6: Increment the count of devices transitioning to unreachable state by 1.
+    /// Fired when a device reaches the consecutive failure threshold (3 failures).
+    /// </summary>
+    public void IncrementPollUnreachable()
+        => _pollUnreachable.Add(1, new TagList { { "site_name", _siteName } });
+
+    /// <summary>
+    /// Phase 6: Increment the count of devices recovering from unreachable state by 1.
+    /// Fired when a previously unreachable device responds successfully.
+    /// </summary>
+    public void IncrementPollRecovered()
+        => _pollRecovered.Add(1, new TagList { { "site_name", _siteName } });
 
     public void Dispose() => _meter.Dispose();
 }
