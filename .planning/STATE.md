@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 ## Current Position
 
 Phase: 3 of 8 (MediatR Pipeline and Instruments) — In progress
-Plan: 2 of 6 in phase 3
-Status: In progress — 03-02 complete, next: 03-03 (OidResolutionBehavior)
-Last activity: 2026-03-05 — Completed 03-02-PLAN.md (LoggingBehavior + ExceptionBehavior open-generic pipeline behaviors in Pipeline/Behaviors/)
+Plan: 3 of 6 in phase 3
+Status: In progress — 03-03 complete, next: 03-04 (PublishBehavior / handler)
+Last activity: 2026-03-05 — Completed 03-03-PLAN.md (ValidationBehavior with OID regex + device registry check; OidResolutionBehavior via IOidMapService)
 
-Progress: [███░░░░░░░] 27% (11/40 plans across all phases estimated)
+Progress: [███░░░░░░░] 30% (12/40 plans across all phases estimated)
 
 ## Performance Metrics
 
@@ -29,7 +29,7 @@ Progress: [███░░░░░░░] 27% (11/40 plans across all phases es
 |-------|-------|-------|----------|
 | 01-infrastructure-foundation | 5 | ~20 min | ~4 min |
 | 02-device-registry-and-oid-map | 4 | ~14 min | ~3.5 min |
-| 03-mediatr-pipeline-and-instruments | 2 (of 6) | ~3 min | ~1.5 min |
+| 03-mediatr-pipeline-and-instruments | 3 (of 6) | ~4 min | ~1.3 min |
 
 **Recent Trend:**
 - Last 10 plans: 01-01 through 01-05 (foundation), 02-01 through 02-04, 03-01 (pipeline foundation)
@@ -85,6 +85,9 @@ Recent decisions affecting current work:
 - [03-02]: LoggingBehavior pattern-matches notification is SnmpOidReceived before logging — other notification types pass through silently to next()
 - [03-02]: ExceptionBehavior returns default! (not Unit.Value) — TResponse is generic; default! is safe for both Unit and any other TResponse
 - [03-02]: ExceptionBehavior always wraps next() in try/catch regardless of notification type — pipeline guard is universal, not type-gated
+- [03-03]: ValidationBehavior checks msg.DeviceName is null before calling TryGetDevice — poll path sets DeviceName at publish time; only trap path needs registry lookup
+- [03-03]: OidResolutionBehavior always calls next() even when MetricName resolves to Unknown sentinel — handlers decide what to do with unresolved OIDs; no silent data loss
+- [03-03]: Rejection uses return default! not throw — avoids triggering error counter path and keeps overhead low for rejected-but-not-exceptional events
 
 ### Pending Todos
 
@@ -97,6 +100,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-05T01:37:47Z
-Stopped at: Completed 03-02-PLAN.md — LoggingBehavior (Debug OID/IP/Source) and ExceptionBehavior (catch-log-swallow + IncrementErrors) created in Pipeline/Behaviors/; build zero errors. Next: 03-03 (OidResolutionBehavior).
+Last session: 2026-03-05T01:38:33Z
+Stopped at: Completed 03-03-PLAN.md — ValidationBehavior (OID regex + IDeviceRegistry unknown-device check, Warning+IncrementRejected+short-circuit) and OidResolutionBehavior (IOidMapService.Resolve sets MetricName, always calls next) created in Pipeline/Behaviors/; build zero errors. Next: 03-04 (PublishBehavior / handler registration).
 Resume file: None
