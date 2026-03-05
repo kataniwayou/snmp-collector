@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 
 ## Current Position
 
-Phase: 2 of 8 (Device Registry and OID Map) — Phase complete
-Plan: 4 of 4 in phase 2
-Status: Phase complete — ready to begin Phase 3
-Last activity: 2026-03-05 — Completed 02-04-PLAN.md (CardinalityAuditService, startup cardinality gate satisfies Phase 2 SC #4)
+Phase: 3 of 8 (MediatR Pipeline and Instruments) — In progress
+Plan: 1 of 6 in phase 3
+Status: In progress — 03-01 complete, next: 03-02 (OidResolutionBehavior)
+Last activity: 2026-03-05 — Completed 03-01-PLAN.md (MediatR + SharpSnmpLib NuGet packages; SnmpOidReceived, SnmpSource, PipelineMetricService with 6 pipeline counters)
 
-Progress: [██░░░░░░░░] 22% (9/40 plans across all phases estimated)
+Progress: [███░░░░░░░] 25% (10/40 plans across all phases estimated)
 
 ## Performance Metrics
 
@@ -29,9 +29,10 @@ Progress: [██░░░░░░░░] 22% (9/40 plans across all phases est
 |-------|-------|-------|----------|
 | 01-infrastructure-foundation | 5 | ~20 min | ~4 min |
 | 02-device-registry-and-oid-map | 4 | ~14 min | ~3.5 min |
+| 03-mediatr-pipeline-and-instruments | 1 (of 6) | ~2 min | ~2 min |
 
 **Recent Trend:**
-- Last 9 plans: 01-01 through 01-05 (foundation), 02-01 (options), 02-02 (pipeline services), 02-03 (unit tests), 02-04 (cardinality audit)
+- Last 10 plans: 01-01 through 01-05 (foundation), 02-01 through 02-04, 03-01 (pipeline foundation)
 - Trend: Consistent ~2-6 min execution
 
 *Updated after each plan completion*
@@ -78,6 +79,9 @@ Recent decisions affecting current work:
 - [02-04]: IHostedLifecycleService.StartingAsync used (not IHostedService.StartAsync) — fires before Quartz QuartzHostedService.StartAsync, ensuring audit completes before any jobs run
 - [02-04]: CardinalityAuditService WarningThreshold = 10,000 series — Prometheus performance bound from RESEARCH.md
 - [02-04]: OID dimension = max(oidMapEntries, uniquePollOids) — traps may send OIDs absent from poll groups; OID map is the correct upper bound
+- [03-01]: SnmpOidReceived is a sealed class not a record — behaviors enrich properties in-place; AgentIp uses set not init (trap path may update post-construction)
+- [03-01]: System.Diagnostics using required for TagList alongside System.Diagnostics.Metrics — TagList is in System.Diagnostics namespace (DiagnosticSource package, transitive via OTel)
+- [03-01]: PipelineMetricService takes IMeterFactory not Meter directly — follows OTel hosting pattern where factory manages meter lifetime
 
 ### Pending Todos
 
@@ -90,6 +94,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-05T00:21:00Z
-Stopped at: Completed 02-04-PLAN.md — CardinalityAuditService registered; Phase 2 complete (all 4 plans done). Next: Phase 3 (MediatR pipeline).
+Last session: 2026-03-05T01:34:15Z
+Stopped at: Completed 03-01-PLAN.md — MediatR 12.5.0 + SharpSnmpLib 12.5.7 added; SnmpOidReceived, SnmpSource, PipelineMetricService (6 counters) created; both projects build zero errors. Next: 03-02 (OidResolutionBehavior).
 Resume file: None
