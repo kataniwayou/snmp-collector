@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Every SNMP OID — from a trap or a poll — gets resolved, typed correctly, and pushed to Prometheus where it's queryable in Grafana within seconds.
-**Current focus:** Phase 7 in progress — Leader Election and Role-Gated Export (Plan 4 of 5 complete).
+**Current focus:** Phase 7 complete — Leader Election and Role-Gated Export (all 5 plans done). Ready for Phase 8.
 
 ## Current Position
 
-Phase: 7 of 8 (Leader Election and Role-Gated Export) — In progress
-Plan: 4 of 5 complete
-Status: DI wiring complete — K8sLeaseElection (concrete-first singleton, K8s path), AlwaysLeaderElection (local dev), MetricRoleGatedExporter via AddReader, dynamic Func<string> role in enrichment processor, ILeaderElection in console formatter, Lease section in appsettings.json. Build succeeds with 0 errors.
-Last activity: 2026-03-05 — Completed 07-04-PLAN.md (DI wiring for leader election, role-gated metrics, dynamic role)
+Phase: 7 of 8 (Leader Election and Role-Gated Export) — Complete
+Plan: 5 of 5 complete
+Status: Phase 7 done — all tests passing (114 total, 0 failures). MetricRoleGatedExporterTests (7), LeaderElectionTests (5), SnmpMetricFactoryTests updated for LeaderMeterName.
+Last activity: 2026-03-05 — Completed 07-05-PLAN.md (unit tests: MetricRoleGatedExporter, AlwaysLeaderElection, DI singleton, SnmpMetricFactoryTests fix)
 
-Progress: [███████████████████░] 85% (31/40 plans across all phases estimated)
+Progress: [████████████████████] 88% (32/40 plans across all phases estimated)
 
 ## Performance Metrics
 
@@ -164,6 +164,9 @@ Recent decisions affecting current work:
 - [07-04]: k8s namespace fully-qualified in ServiceCollectionExtensions — avoids `using k8s;` at file level; K8s types used only in one conditional block
 - [07-04]: LeaseOptions binding inside IsInCluster() branch only — binding with ValidateOnStart outside K8s branch would cause startup failures in local dev
 - [07-04]: appsettings.json Lease section always present — documents config surface; binding only activates in K8s path so values safely ignored in local dev
+- [07-05]: MeterProvider-based approach for MetricRoleGatedExporter tests — Metric is a sealed SDK class; constructing it directly is unsupported; real pipeline with ForceFlush() is more realistic
+- [07-05]: CapturingExporter.ExportCallCount == 0 asserts all-gated follower case — inner exporter not called; Success returned without forwarding (not Failure which triggers OTel retry)
+- [07-05]: AlwaysLeaderElection used as K8sLeaseElection stand-in in DI singleton test — tests the registration PATTERN not K8s cluster behavior; avoids requiring live cluster in unit tests
 
 ### Pending Todos
 
@@ -171,10 +174,10 @@ None yet.
 
 ### Blockers/Concerns
 
-- [Phase 7] MetricRoleGatedExporter reflection ParentProvider propagation confirmed working in OTel 1.15.0 (build succeeds, Batch<Metric>(array, count) constructor available). Plan 05 should add a test verifying resource attributes are propagated.
+- [Phase 7] MetricRoleGatedExporter reflection ParentProvider propagation confirmed working in OTel 1.15.0. ParentProvider breakage detection test added in 07-05: any future OTel SDK upgrade that removes/renames the property will surface immediately in CI.
 
 ## Session Continuity
 
 Last session: 2026-03-05
-Stopped at: Completed 07-04-PLAN.md (DI wiring for leader election, role-gated metrics, dynamic role). Phase 7 Plan 4/5 done.
+Stopped at: Completed 07-05-PLAN.md (unit tests: MetricRoleGatedExporter, AlwaysLeaderElection, DI singleton, SnmpMetricFactoryTests). Phase 7 complete (5/5 plans done).
 Resume file: None
