@@ -10,16 +10,16 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 ## Current Position
 
 Phase: 9 of 9 (Containerized Integration Testing) — In progress
-Plan: 1 of 3 complete
-Status: Phase 9 started — monitoring stack fixed for push-based prometheusremotewrite pipeline.
-Last activity: 2026-03-05 — Completed 09-01: Fix monitoring stack (OTel Collector + Prometheus) for push pipeline
+Plan: 2 of 3 complete
+Status: Phase 9 in progress — SnmpCollector K8s manifests (ConfigMap, Deployment, Service) created.
+Last activity: 2026-03-05 — Completed 09-02: Create SnmpCollector K8s manifests
 
-Progress: [████████████████████░░] 95% (38/40 plans across all phases)
+Progress: [█████████████████████░] 97% (39/40 plans across all phases)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 38
+- Total plans completed: 39
 - Average duration: ~3-5 min
 - Total execution time: ~121 min
 
@@ -196,9 +196,13 @@ None yet.
 ### Blockers/Concerns
 
 - [Phase 7] MetricRoleGatedExporter reflection ParentProvider propagation confirmed working in OTel 1.15.0. ParentProvider breakage detection test added in 07-05: any future OTel SDK upgrade that removes/renames the property will surface immediately in CI.
+- [09-02]: Lease.Namespace=simetra in snmp-collector ConfigMap — RBAC grants simetra-sa lease access only in simetra namespace; "default" would cause 403 on lease acquisition
+- [09-02]: Dummy device (dummy-device-01, 127.0.0.1, empty MetricPolls) in ConfigMap — ReadinessHealthCheck requires DeviceChannelManager.DeviceNames.Count > 0; empty Devices list fails readiness permanently
+- [09-02]: No SNMP port exposed in SnmpCollector Deployment — SNMP listener is internal to cluster; integration tests drive traps within cluster, not from external sources
+- [09-02]: Volume name snmp-collector-config used throughout ConfigMap metadata, volumeMount, and volumes entry — consistent naming prevents configuration drift
 
 ## Session Continuity
 
 Last session: 2026-03-05
-Stopped at: Phase 9 plan 1 complete — monitoring stack fixed for push-based prometheusremotewrite pipeline.
+Stopped at: Completed 09-02-PLAN.md (Phase 9, Plan 2 of 3) — SnmpCollector K8s manifests ready for kubectl apply.
 Resume file: None
