@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Every SNMP OID — from a trap or a poll — gets resolved, typed correctly, and pushed to Prometheus where it's queryable in Grafana within seconds.
-**Current focus:** Phase 7 in progress — Leader Election and Role-Gated Export (Plan 1 of 4 complete).
+**Current focus:** Phase 7 in progress — Leader Election and Role-Gated Export (Plan 2 of 4 complete).
 
 ## Current Position
 
 Phase: 7 of 8 (Leader Election and Role-Gated Export) — In progress
-Plan: 1 of 4 complete
-Status: Foundation types complete (ILeaderElection, AlwaysLeaderElection, LeaseOptions, LeaseOptionsValidator, TelemetryConstants.LeaderMeterName, SiteOptions.PodIdentity). 102 tests passing.
-Last activity: 2026-03-05 — Completed 07-01-PLAN.md (leader election foundation types)
+Plan: 2 of 4 complete
+Status: K8sLeaseElection BackgroundService complete (KubernetesClient 18.0.13, volatile IsLeader, lease delete on SIGTERM). 102 tests passing.
+Last activity: 2026-03-05 — Completed 07-02-PLAN.md (K8sLeaseElection BackgroundService)
 
-Progress: [████████████████░░░░] 75% (28/40 plans across all phases estimated)
+Progress: [█████████████████░░░] 78% (29/40 plans across all phases estimated)
 
 ## Performance Metrics
 
@@ -152,6 +152,9 @@ Recent decisions affecting current work:
 - [07-01]: AlwaysLeaderElection is sealed with expression-body properties — tests needing custom behavior should mock ILeaderElection directly
 - [07-01]: LeaseOptions defaults: Name="snmp-collector-leader", Namespace="default" (SnmpCollector-specific, not Simetra-inherited)
 - [07-01]: SiteOptions.PodIdentity is nullable string — Plan 04 DI wiring will PostConfigure from HOSTNAME env var (K8s pod name), fallback to Environment.MachineName
+- [07-02]: K8sLeaseElection ported directly from Simetra reference with namespace swap only — no structural differences
+- [07-02]: StopAsync calls base.StopAsync first (cancels stoppingToken) before lease delete — prevents race where election loop re-acquires immediately after delete
+- [07-02]: RenewDeadline = DurationSeconds - 2 (fixed 2s window before TTL) — matches Simetra reference pattern
 
 ### Pending Todos
 
@@ -164,5 +167,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-05
-Stopped at: Completed 07-01-PLAN.md (leader election foundation types). Phase 7 Plan 1/4 done.
+Stopped at: Completed 07-02-PLAN.md (K8sLeaseElection BackgroundService). Phase 7 Plan 2/4 done.
 Resume file: None
