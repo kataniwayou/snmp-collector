@@ -5,34 +5,34 @@
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Every SNMP OID — from a trap or a poll — gets resolved, typed correctly, and pushed to Prometheus where it's queryable in Grafana within seconds.
-**Current focus:** Phase 2 — Device Registry and OID Map (3/4 plans complete)
+**Current focus:** Phase 3 — MediatR Pipeline (Phase 2 complete — 4/4 plans done)
 
 ## Current Position
 
-Phase: 2 of 8 (Device Registry and OID Map) — In progress
-Plan: 3 of 4 in phase 2
-Status: In progress
-Last activity: 2026-03-05 — Completed 02-03-PLAN.md (xUnit test project, TestOptionsMonitor, 16 passing unit tests)
+Phase: 2 of 8 (Device Registry and OID Map) — Phase complete
+Plan: 4 of 4 in phase 2
+Status: Phase complete — ready to begin Phase 3
+Last activity: 2026-03-05 — Completed 02-04-PLAN.md (CardinalityAuditService, startup cardinality gate satisfies Phase 2 SC #4)
 
-Progress: [██░░░░░░░░] 20% (8/40 plans across all phases estimated)
+Progress: [██░░░░░░░░] 22% (9/40 plans across all phases estimated)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 7
-- Average duration: ~4-5 min
-- Total execution time: ~30 min
+- Total plans completed: 9
+- Average duration: ~3-5 min
+- Total execution time: ~35 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-infrastructure-foundation | 5 | ~20 min | ~4 min |
-| 02-device-registry-and-oid-map | 3 | ~12 min | ~4 min |
+| 02-device-registry-and-oid-map | 4 | ~14 min | ~3.5 min |
 
 **Recent Trend:**
-- Last 8 plans: 01-01 through 01-05 (foundation), 02-01 (options), 02-02 (pipeline services), 02-03 (unit tests)
-- Trend: Consistent ~2-6 min execution (02-03 was ~2 min -- TDD with pre-existing impl)
+- Last 9 plans: 01-01 through 01-05 (foundation), 02-01 (options), 02-02 (pipeline services), 02-03 (unit tests), 02-04 (cardinality audit)
+- Trend: Consistent ~2-6 min execution
 
 *Updated after each plan completion*
 
@@ -75,9 +75,9 @@ Recent decisions affecting current work:
 - [02-02]: OidMapOptions uses Configure<IConfiguration> delegate — GetSection("OidMap").Bind(opts.Entries) maps flat JSON object keys to Dictionary<string,string>
 - [02-02]: AllDevices returns _byIp.Values (not separate ordered list) — adequate for Phase 6 scheduler which needs to enumerate, not order, devices
 - [02-02]: OidMapService diff logging at Information level (not Debug) — config changes are operator-relevant events
-- [02-03]: xunit 2.9.3 (not 3.x) — 2.x stable; v3 changes assertion API unnecessarily
-- [02-03]: dotnet test -c Release required — Debug build hits SnmpCollector.exe file-lock (pre-existing); Release avoids lock
-- [02-03]: Explicit `using Xunit;` required in test files — ImplicitUsings does not include xUnit namespaces
+- [02-04]: IHostedLifecycleService.StartingAsync used (not IHostedService.StartAsync) — fires before Quartz QuartzHostedService.StartAsync, ensuring audit completes before any jobs run
+- [02-04]: CardinalityAuditService WarningThreshold = 10,000 series — Prometheus performance bound from RESEARCH.md
+- [02-04]: OID dimension = max(oidMapEntries, uniquePollOids) — traps may send OIDs absent from poll groups; OID map is the correct upper bound
 
 ### Pending Todos
 
@@ -90,6 +90,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-05T00:20:54Z
-Stopped at: Completed 02-03-PLAN.md — xUnit test project with 16 passing unit tests (OidMapService + DeviceRegistry). Next: 02-04 (if exists) or Phase 3.
+Last session: 2026-03-05T00:21:00Z
+Stopped at: Completed 02-04-PLAN.md — CardinalityAuditService registered; Phase 2 complete (all 4 plans done). Next: Phase 3 (MediatR pipeline).
 Resume file: None
