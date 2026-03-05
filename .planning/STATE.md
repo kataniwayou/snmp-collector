@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Every SNMP OID — from a trap or a poll — gets resolved, typed correctly, and pushed to Prometheus where it's queryable in Grafana within seconds.
-**Current focus:** Phase 7 in progress — Leader Election and Role-Gated Export (Plan 3 of 5 complete).
+**Current focus:** Phase 7 in progress — Leader Election and Role-Gated Export (Plan 4 of 5 complete).
 
 ## Current Position
 
 Phase: 7 of 8 (Leader Election and Role-Gated Export) — In progress
-Plan: 3 of 5 complete
-Status: MetricRoleGatedExporter (leader-gated BaseExporter<Metric> wrapper) created; SnmpMetricFactory moved to LeaderMeterName. Build succeeds. 102 tests passing (SnmpMetricFactoryTests expected to fail until Plan 05 updates MeterListener filter).
-Last activity: 2026-03-05 — Completed 07-03-PLAN.md (MetricRoleGatedExporter + SnmpMetricFactory LeaderMeterName)
+Plan: 4 of 5 complete
+Status: DI wiring complete — K8sLeaseElection (concrete-first singleton, K8s path), AlwaysLeaderElection (local dev), MetricRoleGatedExporter via AddReader, dynamic Func<string> role in enrichment processor, ILeaderElection in console formatter, Lease section in appsettings.json. Build succeeds with 0 errors.
+Last activity: 2026-03-05 — Completed 07-04-PLAN.md (DI wiring for leader election, role-gated metrics, dynamic role)
 
-Progress: [██████████████████░░] 80% (30/40 plans across all phases estimated)
+Progress: [███████████████████░] 85% (31/40 plans across all phases estimated)
 
 ## Performance Metrics
 
@@ -160,6 +160,10 @@ Recent decisions affecting current work:
 - [07-03]: ParentProvider reflection: one-time lazy SetValue in first Export call — SDK sets ParentProvider after constructor runs; only reflection can reach internal setter
 - [07-03]: SnmpMetricFactory meter change: meterFactory.Create(TelemetryConstants.LeaderMeterName) is the ONLY change — instruments inherit meter name from Meter object automatically
 - [07-03]: PipelineMetricService left on MeterName (unchanged) — pipeline counters must export from ALL instances regardless of leader status
+- [07-04]: Tasks 1+2 committed atomically — SnmpLogEnrichmentProcessor Func<string> signature required before ServiceCollectionExtensions compiles (CS1660 if done separately)
+- [07-04]: k8s namespace fully-qualified in ServiceCollectionExtensions — avoids `using k8s;` at file level; K8s types used only in one conditional block
+- [07-04]: LeaseOptions binding inside IsInCluster() branch only — binding with ValidateOnStart outside K8s branch would cause startup failures in local dev
+- [07-04]: appsettings.json Lease section always present — documents config surface; binding only activates in K8s path so values safely ignored in local dev
 
 ### Pending Todos
 
@@ -172,5 +176,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-05
-Stopped at: Completed 07-03-PLAN.md (MetricRoleGatedExporter + SnmpMetricFactory LeaderMeterName). Phase 7 Plan 3/5 done.
+Stopped at: Completed 07-04-PLAN.md (DI wiring for leader election, role-gated metrics, dynamic role). Phase 7 Plan 4/5 done.
 Resume file: None
