@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 Phase: 9 of 9 (Containerized Integration Testing) — Complete
 Plan: 3 of 3 complete
 Status: All phases complete. Milestone v1.0 ready for audit.
-Last activity: 2026-03-05 — Completed Phase 9: Containerized Integration Testing verified
+Last activity: 2026-03-05 — Completed quick task 007: Verify K8s observability stack
 
 Progress: [██████████████████████] 100% (40/40 plans across all phases)
 
@@ -194,6 +194,7 @@ None yet.
 | 004 | Verify liveness vector (entries, timestamps, stamp points, probe usage) | 2026-03-05 | — (verification only) | [004-verify-liveness-vector](./quick/004-verify-liveness-vector/) |
 | 005 | Verify health check endpoints (startup, readiness, liveness probes) | 2026-03-05 | — (verification only) | [005-verify-health-check-endpoints](./quick/005-verify-health-check-endpoints/) |
 | 006 | Wire CorrelationId propagation into job and trap paths | 2026-03-05 | 0b48083 | [006-wire-correlationid-propagation](./quick/006-wire-correlationid-propagation/) |
+| 007 | Verify K8s observability stack (console logs, ES, Prometheus) | 2026-03-05 | — (verification only) | [007-verify-k8s-observability-stack](./quick/007-verify-k8s-observability-stack/) |
 
 ### Roadmap Evolution
 
