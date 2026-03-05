@@ -5,34 +5,34 @@
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Every SNMP OID — from a trap or a poll — gets resolved, typed correctly, and pushed to Prometheus where it's queryable in Grafana within seconds.
-**Current focus:** Phase 2 — OTel Cardinality Locking (Phase 1 complete)
+**Current focus:** Phase 2 — Device Registry and OID Map (2/4 plans complete)
 
 ## Current Position
 
 Phase: 2 of 8 (Device Registry and OID Map) — In progress
-Plan: 1 of 4 in phase 2
+Plan: 2 of 4 in phase 2
 Status: In progress
-Last activity: 2026-03-05 — Completed 02-01-PLAN.md (five options classes + two validators)
+Last activity: 2026-03-05 — Completed 02-02-PLAN.md (DeviceRegistry, OidMapService, DI wiring)
 
-Progress: [██░░░░░░░░] 15% (6/40 plans across all phases estimated)
+Progress: [██░░░░░░░░] 17% (7/40 plans across all phases estimated)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
-- Average duration: ~4 min
-- Total execution time: ~24 min
+- Total plans completed: 7
+- Average duration: ~4-5 min
+- Total execution time: ~30 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-infrastructure-foundation | 5 | ~20 min | ~4 min |
-| 02-device-registry-and-oid-map | 1 | ~4 min | ~4 min |
+| 02-device-registry-and-oid-map | 2 | ~10 min | ~5 min |
 
 **Recent Trend:**
-- Last 6 plans: 01-01 (scaffold), 01-02 (docker configs), 01-03 (telemetry classes), 01-04 (DI wiring), 01-05 (validators), 02-01 (options classes + validators)
-- Trend: Consistent ~4 min execution
+- Last 7 plans: 01-01 through 01-05 (foundation), 02-01 (options), 02-02 (pipeline services)
+- Trend: Consistent ~4-6 min execution
 
 *Updated after each plan completion*
 
@@ -71,6 +71,10 @@ Recent decisions affecting current work:
 - [02-01]: MetricPollOptions.Oids is List<string> (plain OID strings) — no OidEntryOptions wrapper; TypeCode determined at runtime from SNMP GET response
 - [02-01]: DeviceType removed from DeviceOptions entirely — SnmpCollector is device-agnostic, flat OID map replaces device modules
 - [02-01]: IPAddress.TryParse used in DevicesOptionsValidator for IP format check — catches hostnames/typos at startup
+- [02-02]: DevicesOptions uses Configure<IConfiguration> delegate (not .Bind()) — JSON "Devices" is array; .Bind(GetSection("Devices")) maps array index keys as POCO property names, silently leaving Devices list empty
+- [02-02]: OidMapOptions uses Configure<IConfiguration> delegate — GetSection("OidMap").Bind(opts.Entries) maps flat JSON object keys to Dictionary<string,string>
+- [02-02]: AllDevices returns _byIp.Values (not separate ordered list) — adequate for Phase 6 scheduler which needs to enumerate, not order, devices
+- [02-02]: OidMapService diff logging at Information level (not Debug) — config changes are operator-relevant events
 
 ### Pending Todos
 
@@ -83,6 +87,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-05T00:05:25Z
-Stopped at: Completed 02-01-PLAN.md — Phase 2 options classes and validators complete. Next: 02-02 DeviceRegistry service.
+Last session: 2026-03-05T00:14:55Z
+Stopped at: Completed 02-02-PLAN.md — DeviceRegistry, OidMapService, and Phase 2 DI wiring complete. Next: 02-03 (if exists) or Phase 3.
 Resume file: None
