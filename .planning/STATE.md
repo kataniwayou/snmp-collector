@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Every SNMP OID — from a trap or a poll — gets resolved, typed correctly, and pushed to Prometheus where it's queryable in Grafana within seconds.
-**Current focus:** Phase 6 complete — Poll Scheduling verified (5/5 must-haves). Ready for Phase 7.
+**Current focus:** Phase 7 in progress — Leader Election and Role-Gated Export (Plan 1 of 4 complete).
 
 ## Current Position
 
-Phase: 6 of 8 (Poll Scheduling) — Complete
-Plan: 4 of 4 complete
-Status: Phase 6 verified (5/5 must-haves). 102 tests passing. Poll scheduling fully operational.
-Last activity: 2026-03-05 — Completed 06-04-PLAN.md (unit tests for DeviceUnreachabilityTracker and MetricPollJob)
+Phase: 7 of 8 (Leader Election and Role-Gated Export) — In progress
+Plan: 1 of 4 complete
+Status: Foundation types complete (ILeaderElection, AlwaysLeaderElection, LeaseOptions, LeaseOptionsValidator, TelemetryConstants.LeaderMeterName, SiteOptions.PodIdentity). 102 tests passing.
+Last activity: 2026-03-05 — Completed 07-01-PLAN.md (leader election foundation types)
 
-Progress: [██████████████░░░░░░] 73% (27/40 plans across all phases estimated)
+Progress: [████████████████░░░░] 75% (28/40 plans across all phases estimated)
 
 ## Performance Metrics
 
@@ -148,6 +148,10 @@ Recent decisions affecting current work:
 - [06-04]: CapturingSender implements ISender via explicit interface implementation — ISender.Send<TRequest> requires `where TRequest : IBaseRequest` constraint; implicit implementation constraint mismatch causes CS0425
 - [06-04]: StubJobExecutionContext must implement Put(object,object), Get(object), JobInstance (IJob) — these are required IJobExecutionContext members not obvious from MetricPollJob usage alone
 - [06-04]: EmptyAsyncEnumerable<T> inline helper used for ISender.CreateStream overloads — avoids System.Linq.Async dependency
+- [07-01]: Two-meter architecture: MeterName ("SnmpCollector") exported by all instances for pipeline health; LeaderMeterName ("SnmpCollector.Leader") exported only by leader for business metrics (snmp_gauge, snmp_counter, snmp_info)
+- [07-01]: AlwaysLeaderElection is sealed with expression-body properties — tests needing custom behavior should mock ILeaderElection directly
+- [07-01]: LeaseOptions defaults: Name="snmp-collector-leader", Namespace="default" (SnmpCollector-specific, not Simetra-inherited)
+- [07-01]: SiteOptions.PodIdentity is nullable string — Plan 04 DI wiring will PostConfigure from HOSTNAME env var (K8s pod name), fallback to Environment.MachineName
 
 ### Pending Todos
 
@@ -160,5 +164,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-05
-Stopped at: Phase 6 complete and verified (5/5 must-haves). 102 tests passing. Ready for Phase 7.
+Stopped at: Completed 07-01-PLAN.md (leader election foundation types). Phase 7 Plan 1/4 done.
 Resume file: None
