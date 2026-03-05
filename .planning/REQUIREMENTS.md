@@ -8,11 +8,11 @@
 ### SNMP Collection
 
 - [x] **COLL-01**: Trap listener receives SNMPv2c traps on UDP 162 with community string authentication
-- [ ] **COLL-02**: Quartz-based poller executes SNMP GET (v2c) for configured OIDs per device
-- [ ] **COLL-03**: Each device has its own IP, OID list, and configurable poll intervals in appsettings
-- [ ] **COLL-04**: Quartz creates a MetricPollJob per device/poll combination
-- [ ] **COLL-05**: Quartz thread pool auto-scales to total job count
-- [ ] **COLL-06**: Poll timeout set to 80% of interval to leave response window
+- [x] **COLL-02**: Quartz-based poller executes SNMP GET (v2c) for configured OIDs per device
+- [x] **COLL-03**: Each device has its own IP, OID list, and configurable poll intervals in appsettings
+- [x] **COLL-04**: Quartz creates a MetricPollJob per device/poll combination
+- [x] **COLL-05**: Quartz thread pool auto-scales to total job count
+- [x] **COLL-06**: Poll timeout set to 80% of interval to leave response window
 - [x] **COLL-07**: Both traps and polls publish the same `SnmpOidReceived` notification to MediatR
 
 ### OID Map
@@ -107,8 +107,8 @@
 ### Hardening
 
 - [x] **HARD-01**: Trap storm protection — rate limiting / backpressure when devices flood traps
-- [ ] **HARD-02**: Device unreachability handling — timeout detection, stale metric awareness
-- [ ] **HARD-03**: SNMP poll timeout logged at Warning level, device marked unreachable after N consecutive failures
+- [x] **HARD-02**: Device unreachability handling — timeout detection, stale metric awareness
+- [x] **HARD-03**: SNMP poll timeout logged at Warning level, device marked unreachable after N consecutive failures
 - [ ] **HARD-04**: Configuration validation at startup with fail-fast (ValidateOnStart)
 
 ### Push Pipeline
@@ -162,11 +162,11 @@
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | COLL-01 | Phase 5 | Complete |
-| COLL-02 | Phase 6 | Pending |
-| COLL-03 | Phase 6 | Pending |
-| COLL-04 | Phase 6 | Pending |
-| COLL-05 | Phase 6 | Pending |
-| COLL-06 | Phase 6 | Pending |
+| COLL-02 | Phase 6 | Complete |
+| COLL-03 | Phase 6 | Complete |
+| COLL-04 | Phase 6 | Complete |
+| COLL-05 | Phase 6 | Complete |
+| COLL-06 | Phase 6 | Complete |
 | COLL-07 | Phase 3 | Complete |
 | MAP-01 | Phase 2 | Complete |
 | MAP-02 | Phase 2 | Complete |
@@ -231,8 +231,8 @@
 | HLTH-04 | Phase 8 | Pending |
 | HLTH-05 | Phase 8 | Pending |
 | HARD-01 | Phase 5 | Complete |
-| HARD-02 | Phase 6 | Pending |
-| HARD-03 | Phase 6 | Pending |
+| HARD-02 | Phase 6 | Complete |
+| HARD-03 | Phase 6 | Complete |
 | HARD-04 | Phase 1 | Complete |
 | PUSH-01 | Phase 1 | Complete |
 | PUSH-02 | Phase 1 | Complete |
@@ -249,4 +249,4 @@
 
 ---
 *Requirements defined: 2026-03-04*
-*Last updated: 2026-03-05 after Phase 5 completion*
+*Last updated: 2026-03-05 after Phase 6 completion*

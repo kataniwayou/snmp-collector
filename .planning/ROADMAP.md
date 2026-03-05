@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: MediatR Pipeline and Instruments** - Full behavior chain and all metric instruments verified in isolation
 - [x] **Phase 4: Counter Delta Engine** - Correct delta computation including wrap-around and reboot detection
 - [x] **Phase 5: Trap Ingestion** - UDP 162 listener receiving traps end-to-end through MediatR
-- [ ] **Phase 6: Poll Scheduling** - Quartz-driven SNMP GET publishing to MediatR with unreachability handling
+- [x] **Phase 6: Poll Scheduling** - Quartz-driven SNMP GET publishing to MediatR with unreachability handling
 - [ ] **Phase 7: Leader Election and Role-Gated Export** - Exactly one pod exports business metrics in multi-instance deployment
 - [ ] **Phase 8: Graceful Shutdown and Health Probes** - Clean SIGTERM handling and K8s health probe coverage
 
@@ -128,10 +128,10 @@ Plans:
 **Plans**: 4 plans in 4 waves
 
 Plans:
-- [ ] 06-01-PLAN.md — Foundation types: IDeviceUnreachabilityTracker, DeviceUnreachabilityTracker, PipelineMetricService poll counters (Wave 1)
-- [ ] 06-02-PLAN.md — MetricPollJob: Quartz IJob with SNMP GET, ISender.Send dispatch, timeout, unreachability (Wave 2)
-- [ ] 06-03-PLAN.md — DI wiring: AddSnmpScheduling thread pool sizing, job registration, PollSchedulerStartupService (Wave 3)
-- [ ] 06-04-PLAN.md — Unit tests: DeviceUnreachabilityTracker transitions, MetricPollJob dispatch and failure handling (Wave 4)
+- [x] 06-01-PLAN.md — Foundation types: IDeviceUnreachabilityTracker, DeviceUnreachabilityTracker, PipelineMetricService poll counters (Wave 1)
+- [x] 06-02-PLAN.md — MetricPollJob: Quartz IJob with SNMP GET, ISender.Send dispatch, timeout, unreachability (Wave 2)
+- [x] 06-03-PLAN.md — DI wiring: AddSnmpScheduling thread pool sizing, job registration, PollSchedulerStartupService (Wave 3)
+- [x] 06-04-PLAN.md — Unit tests: DeviceUnreachabilityTracker transitions, MetricPollJob dispatch and failure handling (Wave 4)
 
 ### Phase 7: Leader Election and Role-Gated Export
 **Goal**: In a multi-instance Kubernetes deployment, exactly one pod exports business metrics (snmp_gauge, snmp_counter, snmp_info) while all pods export pipeline and runtime metrics — with near-instant failover when the leader pod is terminated.
@@ -184,6 +184,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 3. MediatR Pipeline and Instruments | 6/6 | Complete | 2026-03-05 |
 | 4. Counter Delta Engine | 4/4 | Complete | 2026-03-05 |
 | 5. Trap Ingestion | 4/4 | Complete | 2026-03-05 |
-| 6. Poll Scheduling | 0/4 | Not started | - |
+| 6. Poll Scheduling | 4/4 | Complete | 2026-03-05 |
 | 7. Leader Election and Role-Gated Export | 0/5 | Not started | - |
 | 8. Graceful Shutdown and Health Probes | 0/6 | Not started | - |
