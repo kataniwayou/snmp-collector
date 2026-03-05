@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Every SNMP OID — from a trap or a poll — gets resolved, typed correctly, and pushed to Prometheus where it's queryable in Grafana within seconds.
-**Current focus:** Phase 4 complete — Counter Delta Engine verified. Ready for Phase 5.
+**Current focus:** Phase 5 in progress — Trap Ingestion. Plan 05-01 complete.
 
 ## Current Position
 
-Phase: 4 of 8 (Counter Delta Engine) — Complete
-Plan: All 4 plans complete
-Status: Phase 4 verified (5/5 must-haves). 64 tests passing. Counter delta engine correctly computes deltas for all scenarios.
-Last activity: 2026-03-05 — Phase 4 verified and completed
+Phase: 5 of 8 (Trap Ingestion) — In progress
+Plan: 1 of 4 complete (05-01 done)
+Status: 05-01 complete (2/2 tasks). 64 tests passing. Channel infrastructure and metric counters ready.
+Last activity: 2026-03-05 — Completed 05-01-PLAN.md
 
-Progress: [██████░░░░] 50% (19/40 plans across all phases estimated)
+Progress: [██████░░░░] 50% (20/40 plans across all phases estimated)
 
 ## Performance Metrics
 
@@ -31,6 +31,7 @@ Progress: [██████░░░░] 50% (19/40 plans across all phases es
 | 02-device-registry-and-oid-map | 4 | ~14 min | ~3.5 min |
 | 03-mediatr-pipeline-and-instruments | 6 (complete) | ~24 min | ~4 min |
 | 04-counter-delta-engine | 4 (complete) | ~5 min | ~1.3 min |
+| 05-trap-ingestion | 1 complete (of 4) | ~2 min | ~2 min |
 
 **Recent Trend:**
 - Last 14 plans: 01-01 through 01-05 (foundation), 02-01 through 02-04, 03-01 through 03-06, 04-01 through 04-04
@@ -111,6 +112,10 @@ Recent decisions affecting current work:
 - [04-02]: AddOrUpdate closure captures previousValue as ulong? — null = add path (first poll); non-null = update path; single atomic ConcurrentDictionary operation
 - [04-04]: CounterDeltaEngine tests use NullLogger (not mock) — log output not under test; tests focus on CounterRecords list assertions only
 - [04-04]: xUnit creates new class instance per test — each test gets a fresh CounterDeltaEngine with empty ConcurrentDictionary state; no test isolation setup required
+- [05-01]: SingleWriter=false on BoundedChannelOptions — multiple concurrent UDP receive callbacks may write to the same device channel; single-writer optimization unsafe
+- [05-01]: DropCounter sealed class with Interlocked.Increment on long field — ConcurrentDictionary<string,long> cannot use Interlocked.Increment(ref dict[key]) in C#; DropCounter wrapper enables lock-free increment
+- [05-01]: Warning logged every 100 drops per device — bounds log volume during trap storms while maintaining visibility
+- [05-01]: device_name tag on snmp.trap.dropped only — auth_failed and unknown_device use site_name only (device not yet known at those rejection points)
 
 ### Pending Todos
 
@@ -122,6 +127,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-05
-Stopped at: Phase 4 complete and verified (5/5 must-haves). 64 tests passing. Ready for Phase 5: Trap Ingestion.
+Last session: 2026-03-05T05:09:47Z
+Stopped at: Completed 05-01-PLAN.md (channel infrastructure and trap counters)
 Resume file: None
