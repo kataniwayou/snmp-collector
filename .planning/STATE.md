@@ -179,6 +179,7 @@ None yet.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 001 | Verify SNMPv2c only (SNMPv3 not supported) | 2026-03-05 | — (verification only) | [001-verify-snmpv2c-only](./quick/001-verify-snmpv2c-only/) |
+| 002 | Verify CorrelationId flow (generation, propagation, storage) | 2026-03-05 | — (verification only) | [002-verify-correlationid-flow](./quick/002-verify-correlationid-flow/) |
 
 ### Blockers/Concerns
 
