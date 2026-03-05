@@ -12,9 +12,14 @@ public sealed class TestSnmpMetricFactory : ISnmpMetricFactory
     public List<(string MetricName, string Oid, string Agent, string Source, double Value)> GaugeRecords { get; } = new();
     public List<(string MetricName, string Oid, string Agent, string Source, string Value)> InfoRecords { get; } = new();
 
+    public List<(string MetricName, string Oid, string Agent, string Source, double Delta)> CounterRecords { get; } = new();
+
     public void RecordGauge(string metricName, string oid, string agent, string source, double value)
         => GaugeRecords.Add((metricName, oid, agent, source, value));
 
     public void RecordInfo(string metricName, string oid, string agent, string source, string value)
         => InfoRecords.Add((metricName, oid, agent, source, value));
+
+    public void RecordCounter(string metricName, string oid, string agent, string source, double delta)
+        => CounterRecords.Add((metricName, oid, agent, source, delta));
 }

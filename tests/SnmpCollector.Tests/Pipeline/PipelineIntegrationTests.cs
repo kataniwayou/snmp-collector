@@ -270,6 +270,9 @@ public sealed class PipelineIntegrationTests : IDisposable
 
         public void RecordInfo(string metricName, string oid, string agent, string source, string value)
             => throw new InvalidOperationException("Simulated downstream factory error");
+
+        public void RecordCounter(string metricName, string oid, string agent, string source, double delta)
+            => throw new InvalidOperationException("Simulated downstream factory error");
     }
 
     private sealed class CapturingLoggerProvider : ILoggerProvider

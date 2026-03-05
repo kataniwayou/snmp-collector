@@ -237,6 +237,9 @@ public sealed class OtelMetricHandlerTests : IDisposable
             CapturedInfoValues.Add(truncated);
         }
 
+        public void RecordCounter(string metricName, string oid, string agent, string source, double delta)
+            => _inner.RecordCounter(metricName, oid, agent, source, delta);
+
         public void Dispose() => _inner.Dispose();
     }
 }

@@ -66,10 +66,24 @@ public sealed class SnmpMetricFactory : ISnmpMetricFactory, IDisposable
         });
     }
 
+    /// <inheritdoc />
+    public void RecordCounter(string metricName, string oid, string agent, string source, double delta)
+    {
+        var counter = GetOrCreateCounter("snmp_counter");
+        counter.Add(delta, new TagList
+        {
+            { "site_name", _siteName },
+            { "metric_name", metricName },
+            { "oid", oid },
+            { "agent", agent },
+            { "source", source }
+        });
+    }
+
     private Gauge<double> GetOrCreateGauge(string name)
         => (Gauge<double>)_instruments.GetOrAdd(name, n => _meter.CreateGauge<double>(n));
 
-    // Exposed for future Phase 4 counter delta engine.
+    // Used by the Phase 4 counter delta engine.
     private Counter<double> GetOrCreateCounter(string name)
         => (Counter<double>)_instruments.GetOrAdd(name, n => _meter.CreateCounter<double>(n));
 
