@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Device Registry and OID Map** - All lookup structures built, cardinality locked, config validated
 - [x] **Phase 3: MediatR Pipeline and Instruments** - Full behavior chain and all metric instruments verified in isolation
 - [x] **Phase 4: Counter Delta Engine** - Correct delta computation including wrap-around and reboot detection
-- [ ] **Phase 5: Trap Ingestion** - UDP 162 listener receiving traps end-to-end through MediatR
+- [x] **Phase 5: Trap Ingestion** - UDP 162 listener receiving traps end-to-end through MediatR
 - [ ] **Phase 6: Poll Scheduling** - Quartz-driven SNMP GET publishing to MediatR with unreachability handling
 - [ ] **Phase 7: Leader Election and Role-Gated Export** - Exactly one pod exports business metrics in multi-instance deployment
 - [ ] **Phase 8: Graceful Shutdown and Health Probes** - Clean SIGTERM handling and K8s health probe coverage
@@ -110,10 +110,10 @@ Plans:
 **Plans**: 4 plans in 3 waves
 
 Plans:
-- [ ] 05-01-PLAN.md — Foundation types: ChannelsOptions, VarbindEnvelope, IDeviceChannelManager/DeviceChannelManager, PipelineMetricService trap counters (Wave 1)
-- [ ] 05-02-PLAN.md — SnmpTrapListenerService: UDP receive loop, community auth, channel write (Wave 2)
-- [ ] 05-03-PLAN.md — ChannelConsumerService: per-device ReadAllAsync, ISender.Send dispatch (Wave 2)
-- [ ] 05-04-PLAN.md — DI wiring + TDD: ServiceCollectionExtensions registration, unit tests for all Phase 5 SC (Wave 3)
+- [x] 05-01-PLAN.md — Foundation types: ChannelsOptions, VarbindEnvelope, IDeviceChannelManager/DeviceChannelManager, PipelineMetricService trap counters (Wave 1)
+- [x] 05-02-PLAN.md — SnmpTrapListenerService: UDP receive loop, community auth, channel write (Wave 2)
+- [x] 05-03-PLAN.md — ChannelConsumerService: per-device ReadAllAsync, ISender.Send dispatch (Wave 2)
+- [x] 05-04-PLAN.md — DI wiring + TDD: ServiceCollectionExtensions registration, unit tests for all Phase 5 SC (Wave 3)
 
 ### Phase 6: Poll Scheduling
 **Goal**: Quartz executes SNMP GET polls on configured intervals per device, publishes results to MediatR, handles device unreachability gracefully, and the thread pool scales to the total job count without starvation.
@@ -184,7 +184,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 2. Device Registry and OID Map | 4/4 | Complete | 2026-03-05 |
 | 3. MediatR Pipeline and Instruments | 6/6 | Complete | 2026-03-05 |
 | 4. Counter Delta Engine | 4/4 | Complete | 2026-03-05 |
-| 5. Trap Ingestion | 0/4 | Planned | - |
+| 5. Trap Ingestion | 4/4 | Complete | 2026-03-05 |
 | 6. Poll Scheduling | 0/5 | Not started | - |
 | 7. Leader Election and Role-Gated Export | 0/5 | Not started | - |
 | 8. Graceful Shutdown and Health Probes | 0/6 | Not started | - |

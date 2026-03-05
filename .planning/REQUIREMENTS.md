@@ -7,7 +7,7 @@
 
 ### SNMP Collection
 
-- [ ] **COLL-01**: Trap listener receives SNMPv2c traps on UDP 162 with community string authentication
+- [x] **COLL-01**: Trap listener receives SNMPv2c traps on UDP 162 with community string authentication
 - [ ] **COLL-02**: Quartz-based poller executes SNMP GET (v2c) for configured OIDs per device
 - [ ] **COLL-03**: Each device has its own IP, OID list, and configurable poll intervals in appsettings
 - [ ] **COLL-04**: Quartz creates a MetricPollJob per device/poll combination
@@ -106,7 +106,7 @@
 
 ### Hardening
 
-- [ ] **HARD-01**: Trap storm protection — rate limiting / backpressure when devices flood traps
+- [x] **HARD-01**: Trap storm protection — rate limiting / backpressure when devices flood traps
 - [ ] **HARD-02**: Device unreachability handling — timeout detection, stale metric awareness
 - [ ] **HARD-03**: SNMP poll timeout logged at Warning level, device marked unreachable after N consecutive failures
 - [ ] **HARD-04**: Configuration validation at startup with fail-fast (ValidateOnStart)
@@ -161,7 +161,7 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| COLL-01 | Phase 5 | Pending |
+| COLL-01 | Phase 5 | Complete |
 | COLL-02 | Phase 6 | Pending |
 | COLL-03 | Phase 6 | Pending |
 | COLL-04 | Phase 6 | Pending |
@@ -230,7 +230,7 @@
 | HLTH-03 | Phase 8 | Pending |
 | HLTH-04 | Phase 8 | Pending |
 | HLTH-05 | Phase 8 | Pending |
-| HARD-01 | Phase 5 | Pending |
+| HARD-01 | Phase 5 | Complete |
 | HARD-02 | Phase 6 | Pending |
 | HARD-03 | Phase 6 | Pending |
 | HARD-04 | Phase 1 | Complete |
@@ -249,4 +249,4 @@
 
 ---
 *Requirements defined: 2026-03-04*
-*Last updated: 2026-03-05 after Phase 4 completion*
+*Last updated: 2026-03-05 after Phase 5 completion*
