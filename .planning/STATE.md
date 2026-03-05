@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Every SNMP OID — from a trap or a poll — gets resolved, typed correctly, and pushed to Prometheus where it's queryable in Grafana within seconds.
-**Current focus:** Phase 6 in progress — Poll Scheduling. Plans 01-03 complete. Plan 04 next.
+**Current focus:** Phase 6 complete — Poll Scheduling all 4 plans done. Phase 7 next.
 
 ## Current Position
 
-Phase: 6 of 8 (Poll Scheduling) — In progress
-Plan: 3 of ~4 complete
-Status: Phase 6 plans 01-03 complete. Quartz wired: IDeviceUnreachabilityTracker singleton, thread pool auto-scaled, MetricPollJob per device/poll-group, PollSchedulerStartupService startup log. 86 tests passing.
-Last activity: 2026-03-05 — Completed 06-03-PLAN.md (Quartz MetricPollJob registration)
+Phase: 6 of 8 (Poll Scheduling) — Complete
+Plan: 4 of 4 complete
+Status: Phase 6 complete. ISnmpClient abstraction, 16 new unit tests (DeviceUnreachabilityTracker + MetricPollJob), sysUpTime ordering bugfix. 102 tests passing.
+Last activity: 2026-03-05 — Completed 06-04-PLAN.md (unit tests for DeviceUnreachabilityTracker and MetricPollJob)
 
-Progress: [█████████████░░░░░░░] 70% (26/40 plans across all phases estimated)
+Progress: [██████████████░░░░░░] 73% (27/40 plans across all phases estimated)
 
 ## Performance Metrics
 
@@ -32,7 +32,7 @@ Progress: [█████████████░░░░░░░] 70% (26
 | 03-mediatr-pipeline-and-instruments | 6 (complete) | ~24 min | ~4 min |
 | 04-counter-delta-engine | 4 (complete) | ~5 min | ~1.3 min |
 | 05-trap-ingestion | 4 (complete) | ~31 min | ~7.75 min |
-| 06-poll-scheduling | 3 complete | ~7 min | ~2.3 min |
+| 06-poll-scheduling | 4 (complete) | ~14 min | ~3.5 min |
 
 **Recent Trend:**
 - Last 24 plans: 01-01 through 06-01
@@ -143,6 +143,11 @@ Recent decisions affecting current work:
 - [06-03]: DevicesOptions bound eagerly (pre-DI) to devicesOptions.Devices — DI container not yet built when AddQuartz lambda runs; same pattern as AddSnmpConfiguration
 - [06-03]: for loops (not foreach) inside AddQuartz lambdas — prevents C# lambda closure capture bug on loop variables
 - [06-03]: PollSchedulerStartupService committed with ServiceCollectionExtensions in one commit — build requires both files simultaneously
+- [06-04]: ISnmpClient wraps static Messenger.GetAsync — interface injection pattern for MetricPollJob testability; SharpSnmpClient registered as singleton in AddSnmpPipeline
+- [06-04]: sysUpTime extraction must happen AFTER dispatch in DispatchResponseAsync loop — extract BEFORE assigned the wrong value (500) to the sysUpTime varbind's own SnmpOidReceived; intent is null for its own message, extracted value for subsequent OIDs
+- [06-04]: CapturingSender implements ISender via explicit interface implementation — ISender.Send<TRequest> requires `where TRequest : IBaseRequest` constraint; implicit implementation constraint mismatch causes CS0425
+- [06-04]: StubJobExecutionContext must implement Put(object,object), Get(object), JobInstance (IJob) — these are required IJobExecutionContext members not obvious from MetricPollJob usage alone
+- [06-04]: EmptyAsyncEnumerable<T> inline helper used for ISender.CreateStream overloads — avoids System.Linq.Async dependency
 
 ### Pending Todos
 
@@ -155,5 +160,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-05
-Stopped at: Completed 06-03-PLAN.md — Quartz MetricPollJob registration with thread pool sizing and PollSchedulerStartupService startup log
+Stopped at: Completed 06-04-PLAN.md — Unit tests for DeviceUnreachabilityTracker and MetricPollJob; ISnmpClient abstraction; sysUpTime ordering bugfix. Phase 6 complete.
 Resume file: None
