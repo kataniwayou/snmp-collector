@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 Phase: 10 of 10 (Metrics Redesign)
 Plan: 8 of 8 complete
 Status: Phase complete
-Last activity: 2026-03-06 - Completed 10-08-PLAN.md (remove redundant per-device CommunityString)
+Last activity: 2026-03-06 - Completed quick task 013: Heartbeat loopback flow appsettings config
 
 Progress: [█████████████████████████] 100% (48/48 plans across all phases)
 
@@ -205,6 +205,7 @@ None yet.
 | 010 | Add snmp_type label, verify no dropped traps, verify no counter instrument | 2026-03-06 | 4e7a503 | [010-add-snmp-type-label-remove-counter](./quick/010-add-snmp-type-label-remove-counter/) |
 | 011 | Verify liveness stamps, set Debug log level, deploy to K8s | 2026-03-06 | 1d2d3a5 | [011-verify-liveness-stamps-debug-logs-dep](./quick/011-verify-liveness-stamps-debug-logs-dep/) |
 | 012 | Test hostname on runtime metrics and logs on actual Prometheus and Elastic | 2026-03-06 | c37eae8 | [012-test-hostname-runtime-metrics-logs](./quick/012-test-hostname-runtime-metrics-logs/) |
+| 013 | Heartbeat loopback flow: configure appsettings with virtual device properties | 2026-03-06 | 7a0a7bd | [013-heartbeat-loopback-flow-appsettings](./quick/013-heartbeat-loopback-flow-appsettings/) |
 
 ### Roadmap Evolution
 
