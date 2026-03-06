@@ -23,8 +23,8 @@ data:
               - set(attributes["host_name"], resource.attributes["service.instance.id"])
 
     exporters:
-      prometheus:
-        endpoint: "0.0.0.0:8889"
+      prometheusremotewrite:
+        endpoint: http://prometheus:9090/api/v1/write
         resource_to_telemetry_conversion:
           enabled: true
 
@@ -45,7 +45,7 @@ data:
         metrics:
           receivers: [otlp]
           processors: [transform]
-          exporters: [prometheus]
+          exporters: [prometheusremotewrite]
         logs:
           receivers: [otlp]
           exporters: [elasticsearch]
