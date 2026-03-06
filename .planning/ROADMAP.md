@@ -189,12 +189,12 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. Traps from any IP with a valid `Simetra.*` community string are accepted and produce metrics with correct `device_name` label extracted from the community string
   2. Traps with invalid community string (no `Simetra.` prefix) are dropped with Debug-level log
-  3. Polls use per-device configured CommunityString (validated as Simetra.* at startup) and Port
+  3. Polls derive community string from device Name via CommunityStringHelper.DeriveFromDeviceName — no per-device CommunityString config needed
   4. All metric labels use `host_name` (from NODE_NAME env var / MachineName) instead of `site_name`, and `device_name` + `ip` instead of `agent`
   5. Empty `Devices[]` config is valid -- pod starts and accepts traps without poll configuration
   6. All tests pass with new label taxonomy, community string convention, and single channel architecture
   7. sysUpTime is not automatically prepended to poll requests -- users add it to OID lists if needed
-**Plans:** 7 plans in 5 waves
+**Plans:** 8 plans in 6 waves
 
 Plans:
 - [x] 10-01-PLAN.md — Config cleanup: SiteOptions optional, remove CommunityString fields, CommunityStringHelper, DeviceInfo/DeviceRegistry refactor (Wave 1)
@@ -204,6 +204,7 @@ Plans:
 - [x] 10-05-PLAN.md — Test updates: all test files updated for new interfaces, labels, and channel architecture (Wave 4)
 - [x] 10-06-PLAN.md — GAP: Fix host_name to use NODE_NAME env var (K8s Downward API spec.nodeName) for persistent server identity (Wave 5)
 - [x] 10-07-PLAN.md — GAP: Add per-device Port and CommunityString config, Simetra.* validation, remove sysUpTime prepend (Wave 5)
+- [ ] 10-08-PLAN.md — GAP: Remove redundant CommunityString config, derive from Name via CommunityStringHelper (Wave 6)
 
 ## Progress
 
@@ -221,4 +222,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 7. Leader Election and Role-Gated Export | 5/5 | Complete | 2026-03-05 |
 | 8. Graceful Shutdown and Health Probes | 5/5 | Complete | 2026-03-05 |
 | 9. Containerized Integration Testing | 3/3 | Complete | 2026-03-05 |
-| 10. Metrics Redesign | 7/7 | Complete | 2026-03-06 |
+| 10. Metrics Redesign | 7/8 | Gap Closure | 2026-03-06 |
