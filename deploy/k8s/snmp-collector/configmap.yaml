@@ -37,6 +37,7 @@ data:
         {
           "Name": "dummy-device-01",
           "IpAddress": "127.0.0.1",
+          "CommunityString": "Simetra.dummy-device-01",
           "MetricPolls": []
         }
       ],

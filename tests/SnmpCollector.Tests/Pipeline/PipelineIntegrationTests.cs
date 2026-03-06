@@ -59,6 +59,7 @@ public sealed class PipelineIntegrationTests : IDisposable
                 {
                     Name = KnownDevice,
                     IpAddress = KnownDeviceIp,
+                    CommunityString = "Simetra." + KnownDevice,
                     MetricPolls = []
                 }
             ]

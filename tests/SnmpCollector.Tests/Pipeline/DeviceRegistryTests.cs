@@ -21,6 +21,7 @@ public sealed class DeviceRegistryTests
             {
                 Name = "npb-core-01",
                 IpAddress = "10.0.10.1",
+                CommunityString = "Simetra.npb-core-01",
                 MetricPolls =
                 [
                     new MetricPollOptions
@@ -34,6 +35,7 @@ public sealed class DeviceRegistryTests
             {
                 Name = "obp-edge-01",
                 IpAddress = "10.0.10.2",
+                CommunityString = "Simetra.obp-edge-01",
                 MetricPolls = []
             }
         ]
