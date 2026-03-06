@@ -179,6 +179,9 @@ Recent decisions affecting current work:
 - [09-03]: SnmpCollector.csproj needs explicit <Content Include="appsettings*.json" CopyToPublishDirectory="PreserveNewest"/> — Microsoft.NET.Sdk (non-Web) does not auto-publish appsettings files
 - [09-03]: Dockerfile sed for Devices array removed — base appsettings.json already has empty Devices[]; sed pattern corrupted JSON when array was already empty
 - [09-03]: OTel metric names in Prometheus use dotnet_ prefix (not process_runtime_dotnet_) and snmp_ prefix for pipeline counters — prometheusremotewrite normalizes names
+- [10-02]: host_name resolved from HOSTNAME env var with Environment.MachineName fallback — consistent pattern across SnmpMetricFactory, PipelineMetricService, SnmpConsoleFormatter
+- [10-02]: agent label split into device_name + ip — device_name from community string, ip from sender/target address; two explicit labels replace one ambiguous label
+- [10-02]: SiteOptions dependency removed from SnmpMetricFactory, PipelineMetricService, SnmpConsoleFormatter — host identity is environment-derived, not config-derived
 
 ### Pending Todos
 
