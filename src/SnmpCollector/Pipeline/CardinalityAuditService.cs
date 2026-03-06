@@ -15,10 +15,11 @@ namespace SnmpCollector.Pipeline;
 /// </para>
 /// <para>
 /// Label taxonomy (bounded by design):
-///   site_name  -- 1 per deployment (from SiteOptions.Name)
+///   host_name   -- 1 per deployment (from HOSTNAME env var or Environment.MachineName)
 ///   metric_name -- bounded by OID map size + 1 for Unknown
 ///   oid         -- bounded by OID map size
-///   agent       -- bounded by device count (IDeviceRegistry.AllDevices)
+///   device_name -- bounded by device count (community string convention)
+///   ip          -- bounded by device count
 ///   source      -- 2 values: poll, trap
 ///   snmp_type   -- 8 fixed values: integer32, gauge32, timeticks, counter32, counter64, octetstring, ipaddress, objectidentifier
 /// </para>
@@ -89,10 +90,10 @@ public sealed class CardinalityAuditService : IHostedLifecycleService
 
         // Log label taxonomy summary -- provides documentation-in-logs for operational teams.
         _logger.LogInformation(
-            "Label taxonomy: site_name (1 per deployment), " +
+            "Label taxonomy: host_name (1 per deployment, from HOSTNAME env var), " +
             "metric_name (bounded by OID map: {OidMapSize} entries + Unknown), " +
             "oid (bounded by OID map), " +
-            "agent (bounded by device count: {DeviceCount}), " +
+            "device_name (bounded by device count: {DeviceCount}), ip (bounded by device count), " +
             "source (2: poll/trap), " +
             "snmp_type (bounded: 8 fixed enum values)",
             oidMapEntries, deviceCount);

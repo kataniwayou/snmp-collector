@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Console;
 using Microsoft.Extensions.Options;
-using SnmpCollector.Configuration;
 using SnmpCollector.Pipeline;
 
 namespace SnmpCollector.Telemetry;
@@ -15,19 +14,18 @@ namespace SnmpCollector.Telemetry;
 public sealed class SnmpConsoleFormatterOptions : ConsoleFormatterOptions
 {
     /// <summary>
-    /// The service provider used to resolve <see cref="ICorrelationService"/>,
-    /// <see cref="IOptions{SiteOptions}"/>, and <see cref="ILeaderElection"/>
-    /// on first write.
+    /// The service provider used to resolve <see cref="ICorrelationService"/>
+    /// and <see cref="ILeaderElection"/> on first write.
     /// Populated by <see cref="PostConfigureSnmpFormatterOptions"/>.
     /// </summary>
     public IServiceProvider? ServiceProvider { get; set; }
 }
 
 /// <summary>
-/// Custom plain-text console formatter that prefixes every log line with site, role, and
+/// Custom plain-text console formatter that prefixes every log line with hostname, role, and
 /// correlationId context. Produces output in the format:
 /// <code>
-/// {timestamp} [{level}] [{site}|{role}|{globalId}|{operationId}] {category} {message}
+/// {timestamp} [{level}] [{hostname}|{role}|{globalId}|{operationId}] {category} {message}
 /// </code>
 /// Replaces JSON structured console output with human-readable plain text suitable for
 /// local development while retaining operational context. Shows BOTH global and operation
@@ -44,7 +42,6 @@ public sealed class SnmpConsoleFormatter : ConsoleFormatter
 
     // Lazily resolved DI services (resolved on first Write call)
     private ICorrelationService? _correlationService;
-    private IOptions<SiteOptions>? _siteOptions;
     private ILeaderElection? _leaderElection;
     private bool _servicesResolved;
 
@@ -73,7 +70,7 @@ public sealed class SnmpConsoleFormatter : ConsoleFormatter
 
         var timestamp = DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ");
         var level = GetLevelAbbreviation(logEntry.LogLevel);
-        var site = _siteOptions?.Value.Name ?? "unknown";
+        var hostname = Environment.GetEnvironmentVariable("HOSTNAME") ?? Environment.MachineName;
         var role = _leaderElection?.CurrentRole ?? "unknown";
         var globalId = _correlationService?.CurrentCorrelationId ?? "none";
         var operationId = _correlationService?.OperationCorrelationId;
@@ -83,7 +80,7 @@ public sealed class SnmpConsoleFormatter : ConsoleFormatter
         textWriter.Write(" [");
         textWriter.Write(level);
         textWriter.Write("] [");
-        textWriter.Write(site);
+        textWriter.Write(hostname);
         textWriter.Write('|');
         textWriter.Write(role);
         textWriter.Write('|');
@@ -118,7 +115,6 @@ public sealed class SnmpConsoleFormatter : ConsoleFormatter
             return;
 
         _correlationService = sp.GetService<ICorrelationService>();
-        _siteOptions = sp.GetService<IOptions<SiteOptions>>();
         _leaderElection = sp.GetService<ILeaderElection>();  // Phase 7: dynamic role
         _servicesResolved = true;
     }
@@ -141,7 +137,7 @@ public sealed class SnmpConsoleFormatter : ConsoleFormatter
 /// <summary>
 /// Post-configures <see cref="SnmpConsoleFormatterOptions"/> to inject the root
 /// <see cref="IServiceProvider"/>. This allows the formatter to lazily resolve
-/// DI services (correlation, site) without constructor injection,
+/// DI services (correlation, leader election) without constructor injection,
 /// which is not supported by the <see cref="ConsoleFormatter"/> infrastructure.
 /// </summary>
 internal sealed class PostConfigureSnmpFormatterOptions

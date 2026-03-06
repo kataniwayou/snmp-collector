@@ -33,7 +33,8 @@ public sealed class OtelMetricHandler : IRequestHandler<SnmpOidReceived, Unit>
     public Task<Unit> Handle(SnmpOidReceived notification, CancellationToken cancellationToken)
     {
         var metricName = notification.MetricName ?? OidMapService.Unknown;
-        var agent = notification.DeviceName ?? notification.AgentIp.ToString();
+        var deviceName = notification.DeviceName ?? "unknown";
+        var ip = notification.AgentIp.ToString();
         var source = notification.Source.ToString().ToLowerInvariant();
 
         switch (notification.TypeCode)
@@ -42,7 +43,8 @@ public sealed class OtelMetricHandler : IRequestHandler<SnmpOidReceived, Unit>
                 _metricFactory.RecordGauge(
                     metricName,
                     notification.Oid,
-                    agent,
+                    deviceName,
+                    ip,
                     source,
                     "integer32",
                     ((Integer32)notification.Value).ToInt32());
@@ -53,7 +55,8 @@ public sealed class OtelMetricHandler : IRequestHandler<SnmpOidReceived, Unit>
                 _metricFactory.RecordGauge(
                     metricName,
                     notification.Oid,
-                    agent,
+                    deviceName,
+                    ip,
                     source,
                     "gauge32",
                     ((Gauge32)notification.Value).ToUInt32());
@@ -64,7 +67,8 @@ public sealed class OtelMetricHandler : IRequestHandler<SnmpOidReceived, Unit>
                 _metricFactory.RecordGauge(
                     metricName,
                     notification.Oid,
-                    agent,
+                    deviceName,
+                    ip,
                     source,
                     "timeticks",
                     ((TimeTicks)notification.Value).ToUInt32());
@@ -75,7 +79,8 @@ public sealed class OtelMetricHandler : IRequestHandler<SnmpOidReceived, Unit>
                 _metricFactory.RecordGauge(
                     metricName,
                     notification.Oid,
-                    agent,
+                    deviceName,
+                    ip,
                     source,
                     "counter32",
                     ((Counter32)notification.Value).ToUInt32());
@@ -86,7 +91,8 @@ public sealed class OtelMetricHandler : IRequestHandler<SnmpOidReceived, Unit>
                 _metricFactory.RecordGauge(
                     metricName,
                     notification.Oid,
-                    agent,
+                    deviceName,
+                    ip,
                     source,
                     "counter64",
                     ((Counter64)notification.Value).ToUInt64());
@@ -97,7 +103,8 @@ public sealed class OtelMetricHandler : IRequestHandler<SnmpOidReceived, Unit>
                 _metricFactory.RecordInfo(
                     metricName,
                     notification.Oid,
-                    agent,
+                    deviceName,
+                    ip,
                     source,
                     "octetstring",
                     notification.Value.ToString());
@@ -108,7 +115,8 @@ public sealed class OtelMetricHandler : IRequestHandler<SnmpOidReceived, Unit>
                 _metricFactory.RecordInfo(
                     metricName,
                     notification.Oid,
-                    agent,
+                    deviceName,
+                    ip,
                     source,
                     "ipaddress",
                     notification.Value.ToString());
@@ -119,7 +127,8 @@ public sealed class OtelMetricHandler : IRequestHandler<SnmpOidReceived, Unit>
                 _metricFactory.RecordInfo(
                     metricName,
                     notification.Oid,
-                    agent,
+                    deviceName,
+                    ip,
                     source,
                     "objectidentifier",
                     notification.Value.ToString());
@@ -128,10 +137,11 @@ public sealed class OtelMetricHandler : IRequestHandler<SnmpOidReceived, Unit>
 
             default:
                 _logger.LogWarning(
-                    "Unrecognized SnmpType dropped: Oid={Oid} TypeCode={TypeCode} Agent={Agent}",
+                    "Unrecognized SnmpType dropped: Oid={Oid} TypeCode={TypeCode} DeviceName={DeviceName} Ip={Ip}",
                     notification.Oid,
                     notification.TypeCode,
-                    agent);
+                    deviceName,
+                    ip);
                 break;
         }
 
