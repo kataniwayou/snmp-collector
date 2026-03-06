@@ -1,8 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
-using Microsoft.Extensions.Options;
-using SnmpCollector.Configuration;
 
 namespace SnmpCollector.Telemetry;
 
@@ -16,7 +14,7 @@ namespace SnmpCollector.Telemetry;
 public sealed class SnmpMetricFactory : ISnmpMetricFactory, IDisposable
 {
     private readonly Meter _meter;
-    private readonly string _siteName;
+    private readonly string _hostName;
 
     /// <summary>
     /// Thread-safe cache mapping instrument name to the instrument instance.
@@ -30,29 +28,30 @@ public sealed class SnmpMetricFactory : ISnmpMetricFactory, IDisposable
     /// </summary>
     private const int MaxInfoValueLength = 128;
 
-    public SnmpMetricFactory(IMeterFactory meterFactory, IOptions<SiteOptions> siteOptions)
+    public SnmpMetricFactory(IMeterFactory meterFactory)
     {
         _meter = meterFactory.Create(TelemetryConstants.LeaderMeterName);
-        _siteName = siteOptions.Value.Name;
+        _hostName = Environment.GetEnvironmentVariable("HOSTNAME") ?? Environment.MachineName;
     }
 
     /// <inheritdoc />
-    public void RecordGauge(string metricName, string oid, string agent, string source, string snmpType, double value)
+    public void RecordGauge(string metricName, string oid, string deviceName, string ip, string source, string snmpType, double value)
     {
         var gauge = GetOrCreateGauge("snmp_gauge");
         gauge.Record(value, new TagList
         {
-            { "site_name", _siteName },
+            { "host_name", _hostName },
             { "metric_name", metricName },
             { "oid", oid },
-            { "agent", agent },
+            { "device_name", deviceName },
+            { "ip", ip },
             { "source", source },
             { "snmp_type", snmpType }
         });
     }
 
     /// <inheritdoc />
-    public void RecordInfo(string metricName, string oid, string agent, string source, string snmpType, string value)
+    public void RecordInfo(string metricName, string oid, string deviceName, string ip, string source, string snmpType, string value)
     {
         var truncated = value.Length > MaxInfoValueLength
             ? string.Concat(value.AsSpan(0, 125), "...")
@@ -61,10 +60,11 @@ public sealed class SnmpMetricFactory : ISnmpMetricFactory, IDisposable
         var gauge = GetOrCreateGauge("snmp_info");
         gauge.Record(1.0, new TagList
         {
-            { "site_name", _siteName },
+            { "host_name", _hostName },
             { "metric_name", metricName },
             { "oid", oid },
-            { "agent", agent },
+            { "device_name", deviceName },
+            { "ip", ip },
             { "source", source },
             { "snmp_type", snmpType },
             { "value", truncated }
