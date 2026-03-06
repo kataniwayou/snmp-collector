@@ -13,7 +13,7 @@ Phase: 9 of 9 (Containerized Integration Testing) — Complete
 Plan: 3 of 3 complete
 Status: Phase 10 not yet planned.
 Next Phase: Phase 10 — Metrics
-Last activity: 2026-03-06 — Completed quick task 010: Add snmp_type label, verify no dropped traps, verify no counter instrument
+Last activity: 2026-03-06 — Completed quick task 011: Verify liveness stamps, set Debug log level, deploy to K8s
 
 Progress: [██████████████████████] 100% (40/40 plans across all phases)
 
@@ -199,6 +199,7 @@ None yet.
 | 008 | Verify logs business logic + explain Role standalone | 2026-03-05 | — (verification only) | [008-verify-logs-business-logic-and-role](./quick/008-verify-logs-business-logic-and-role/) |
 | 009 | Remove redundant Role, simplify Site options | 2026-03-05 | 1428f21 | [009-remove-role-simplify-site-options](./quick/009-remove-role-simplify-site-options/) |
 | 010 | Add snmp_type label, verify no dropped traps, verify no counter instrument | 2026-03-06 | 4e7a503 | [010-add-snmp-type-label-remove-counter](./quick/010-add-snmp-type-label-remove-counter/) |
+| 011 | Verify liveness stamps, set Debug log level, deploy to K8s | 2026-03-06 | 1d2d3a5 | [011-verify-liveness-stamps-debug-logs-dep](./quick/011-verify-liveness-stamps-debug-logs-dep/) |
 
 ### Roadmap Evolution
 
@@ -216,5 +217,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-06
-Stopped at: Completed quick task 010: Add snmp_type label to all SNMP metrics
+Stopped at: Completed quick task 011: Verify liveness stamps, set Debug log level, deploy to K8s
 Resume file: None
