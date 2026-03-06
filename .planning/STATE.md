@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 Phase: 10 of 10 (Metrics Redesign)
 Plan: 8 of 8 complete
 Status: Phase complete
-Last activity: 2026-03-06 - Completed quick task 014: Fix heartbeat config (remove device, keep OidMap)
+Last activity: 2026-03-06 - Completed quick task 015: Add HeartbeatJob (loopback trap, liveness stamp)
 
 Progress: [█████████████████████████] 100% (48/48 plans across all phases)
 
@@ -207,6 +207,7 @@ None yet.
 | 012 | Test hostname on runtime metrics and logs on actual Prometheus and Elastic | 2026-03-06 | c37eae8 | [012-test-hostname-runtime-metrics-logs](./quick/012-test-hostname-runtime-metrics-logs/) |
 | 013 | Heartbeat loopback flow: configure appsettings with virtual device properties | 2026-03-06 | 7a0a7bd | [013-heartbeat-loopback-flow-appsettings](./quick/013-heartbeat-loopback-flow-appsettings/) |
 | 014 | Fix heartbeat config — remove device entry, keep OidMap only | 2026-03-06 | f7c100d | [014-fix-heartbeat-remove-device-keep-oid](./quick/014-fix-heartbeat-remove-device-keep-oid/) |
+| 015 | Add HeartbeatJob — loopback SNMP trap, liveness stamp, Quartz wiring | 2026-03-06 | 1f5cd42 | [015-add-heartbeat-job](./quick/015-add-heartbeat-job/) |
 
 ### Roadmap Evolution
 
