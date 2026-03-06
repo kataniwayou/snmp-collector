@@ -32,6 +32,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
+        - name: PHYSICAL_HOSTNAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
         resources:
           requests:
             cpu: 100m
