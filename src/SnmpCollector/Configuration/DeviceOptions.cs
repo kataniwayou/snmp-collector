@@ -25,12 +25,6 @@ public sealed class DeviceOptions
     public int Port { get; set; } = 161;
 
     /// <summary>
-    /// SNMPv2c community string for this device.
-    /// Must follow the Simetra.* convention (e.g., "Simetra.npb-core-01").
-    /// </summary>
-    public string CommunityString { get; set; } = string.Empty;
-
-    /// <summary>
     /// Metric polling configurations for this device.
     /// Each entry is a separate Quartz job: metric-poll-{deviceName}-{pollIndex}.
     /// </summary>

@@ -50,15 +50,6 @@ public sealed class DevicesOptionsValidator : IValidateOptions<DevicesOptions>
             failures.Add($"Devices[{index}].Port must be between 1 and 65535");
         }
 
-        if (string.IsNullOrWhiteSpace(device.CommunityString))
-        {
-            failures.Add($"Devices[{index}].CommunityString is required");
-        }
-        else if (!device.CommunityString.StartsWith("Simetra.", StringComparison.Ordinal))
-        {
-            failures.Add($"Devices[{index}].CommunityString '{device.CommunityString}' must start with 'Simetra.'");
-        }
-
         for (var j = 0; j < device.MetricPolls.Count; j++)
         {
             var poll = device.MetricPolls[j];

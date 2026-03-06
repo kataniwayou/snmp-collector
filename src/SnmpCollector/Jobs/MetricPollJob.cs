@@ -12,7 +12,7 @@ namespace SnmpCollector.Jobs;
 /// Quartz <see cref="IJob"/> that executes a single SNMP GET poll for one device/poll-group pair.
 /// Each returned varbind is dispatched individually via <see cref="ISender.Send"/> into the
 /// MediatR pipeline (Logging → Exception → Validation → OidResolution → OtelMetricHandler).
-/// Uses per-device Port and CommunityString from configuration (no hardcoded defaults).
+/// Uses per-device Port from configuration and derives CommunityString from device name at runtime.
 /// <para>
 /// <see cref="DisallowConcurrentExecution"/> prevents pile-up on slow devices: if a previous
 /// execution is still running when the trigger fires, Quartz skips the fire.
@@ -80,7 +80,7 @@ public sealed class MetricPollJob : IJob
             .ToList();
 
         var endpoint = new IPEndPoint(IPAddress.Parse(device.IpAddress), device.Port);
-        var community = new OctetString(device.CommunityString);
+        var community = new OctetString(CommunityStringHelper.DeriveFromDeviceName(device.Name));
 
         try
         {

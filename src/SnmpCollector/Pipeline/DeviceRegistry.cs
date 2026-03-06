@@ -9,7 +9,7 @@ namespace SnmpCollector.Pipeline;
 /// <summary>
 /// Singleton registry that maps normalized IPv4 addresses and device names to
 /// <see cref="DeviceInfo"/> for O(1) device lookup. Built once at startup from
-/// <see cref="DevicesOptions"/>. Community strings are configured per-device.
+/// <see cref="DevicesOptions"/>.
 /// </summary>
 public sealed class DeviceRegistry : IDeviceRegistry
 {
@@ -42,7 +42,7 @@ public sealed class DeviceRegistry : IDeviceRegistry
                 .ToList()
                 .AsReadOnly();
 
-            var info = new DeviceInfo(d.Name, d.IpAddress, d.Port, d.CommunityString, pollGroups);
+            var info = new DeviceInfo(d.Name, d.IpAddress, d.Port, pollGroups);
             byIpBuilder[ip] = info;
             byNameBuilder[info.Name] = info;
         }
