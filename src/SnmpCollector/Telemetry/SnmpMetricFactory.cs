@@ -31,7 +31,7 @@ public sealed class SnmpMetricFactory : ISnmpMetricFactory, IDisposable
     public SnmpMetricFactory(IMeterFactory meterFactory)
     {
         _meter = meterFactory.Create(TelemetryConstants.LeaderMeterName);
-        _hostName = Environment.GetEnvironmentVariable("NODE_NAME") ?? Environment.MachineName;
+        _hostName = Environment.GetEnvironmentVariable("PHYSICAL_HOSTNAME") ?? Environment.MachineName;
     }
 
     /// <inheritdoc />

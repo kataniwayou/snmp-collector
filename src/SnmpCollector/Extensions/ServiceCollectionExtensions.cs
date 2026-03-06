@@ -74,7 +74,7 @@ public static class ServiceCollectionExtensions
             .ConfigureResource(resource => resource
                 .AddService(
                     serviceName: otlpOptions.ServiceName ?? "snmp-collector",
-                    serviceInstanceId: Environment.GetEnvironmentVariable("NODE_NAME")
+                    serviceInstanceId: Environment.GetEnvironmentVariable("PHYSICAL_HOSTNAME")
                         ?? Environment.MachineName))
             .WithMetrics(metrics =>
             {
@@ -125,7 +125,7 @@ public static class ServiceCollectionExtensions
                 ResourceBuilder.CreateDefault()
                     .AddService(
                         serviceName: otlpOptions.ServiceName ?? "snmp-collector",
-                        serviceInstanceId: Environment.GetEnvironmentVariable("NODE_NAME")
+                        serviceInstanceId: Environment.GetEnvironmentVariable("PHYSICAL_HOSTNAME")
                             ?? Environment.MachineName));
             logging.AddOtlpExporter(o =>
             {
@@ -133,7 +133,7 @@ public static class ServiceCollectionExtensions
             });
             logging.AddProcessor(sp =>
             {
-                var hostName = Environment.GetEnvironmentVariable("NODE_NAME") ?? Environment.MachineName;
+                var hostName = Environment.GetEnvironmentVariable("PHYSICAL_HOSTNAME") ?? Environment.MachineName;
                 var correlationService = sp.GetRequiredService<ICorrelationService>();
                 var leaderElection = sp.GetRequiredService<ILeaderElection>();
                 return new SnmpLogEnrichmentProcessor(
