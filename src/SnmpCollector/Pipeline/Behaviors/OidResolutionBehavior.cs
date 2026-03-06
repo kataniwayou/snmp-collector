@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.Extensions.Logging;
 using SnmpCollector.Pipeline;
 
 namespace SnmpCollector.Pipeline.Behaviors;
@@ -14,10 +15,14 @@ public sealed class OidResolutionBehavior<TNotification, TResponse>
     where TNotification : notnull
 {
     private readonly IOidMapService _oidMapService;
+    private readonly ILogger<OidResolutionBehavior<TNotification, TResponse>> _logger;
 
-    public OidResolutionBehavior(IOidMapService oidMapService)
+    public OidResolutionBehavior(
+        IOidMapService oidMapService,
+        ILogger<OidResolutionBehavior<TNotification, TResponse>> logger)
     {
         _oidMapService = oidMapService;
+        _logger = logger;
     }
 
     public async Task<TResponse> Handle(
@@ -28,6 +33,11 @@ public sealed class OidResolutionBehavior<TNotification, TResponse>
         if (notification is SnmpOidReceived msg)
         {
             msg.MetricName = _oidMapService.Resolve(msg.Oid);
+
+            if (msg.MetricName == OidMapService.Unknown)
+                _logger.LogDebug("OID {Oid} not found in OidMap", msg.Oid);
+            else
+                _logger.LogDebug("OID {Oid} resolved to {MetricName}", msg.Oid, msg.MetricName);
         }
 
         return await next();

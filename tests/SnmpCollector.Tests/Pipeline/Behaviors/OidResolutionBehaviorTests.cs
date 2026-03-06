@@ -1,6 +1,7 @@
 using System.Net;
 using Lextm.SharpSnmpLib;
 using MediatR;
+using Microsoft.Extensions.Logging.Abstractions;
 using SnmpCollector.Pipeline;
 using SnmpCollector.Pipeline.Behaviors;
 using Xunit;
@@ -25,7 +26,7 @@ public sealed class OidResolutionBehaviorTests
     {
         // Arrange: OID is in the map -> MetricName populated
         var oidMapService = new StubOidMapService(knownOid: "1.3.6.1.2.1.25.3.3.1.2", metricName: "hrProcessorLoad");
-        var behavior = new OidResolutionBehavior<SnmpOidReceived, Unit>(oidMapService);
+        var behavior = new OidResolutionBehavior<SnmpOidReceived, Unit>(oidMapService, NullLogger<OidResolutionBehavior<SnmpOidReceived, Unit>>.Instance);
         var notification = MakeNotification("1.3.6.1.2.1.25.3.3.1.2");
 
         await behavior.Handle(notification, ct => Task.FromResult(Unit.Value), CancellationToken.None);
@@ -38,7 +39,7 @@ public sealed class OidResolutionBehaviorTests
     {
         // Arrange: OID not in map -> MetricName set to "Unknown"
         var oidMapService = new StubOidMapService(knownOid: "1.3.6.1.2.1.25.3.3.1.2", metricName: "hrProcessorLoad");
-        var behavior = new OidResolutionBehavior<SnmpOidReceived, Unit>(oidMapService);
+        var behavior = new OidResolutionBehavior<SnmpOidReceived, Unit>(oidMapService, NullLogger<OidResolutionBehavior<SnmpOidReceived, Unit>>.Instance);
         var notification = MakeNotification("1.3.9.9.9.9");
 
         await behavior.Handle(notification, ct => Task.FromResult(Unit.Value), CancellationToken.None);
@@ -50,7 +51,7 @@ public sealed class OidResolutionBehaviorTests
     public async Task AlwaysCallsNext_KnownOid()
     {
         var oidMapService = new StubOidMapService(knownOid: "1.3.6.1.2.1.25.3.3.1.2", metricName: "hrProcessorLoad");
-        var behavior = new OidResolutionBehavior<SnmpOidReceived, Unit>(oidMapService);
+        var behavior = new OidResolutionBehavior<SnmpOidReceived, Unit>(oidMapService, NullLogger<OidResolutionBehavior<SnmpOidReceived, Unit>>.Instance);
         var notification = MakeNotification("1.3.6.1.2.1.25.3.3.1.2");
         var nextCalled = false;
 
@@ -68,7 +69,7 @@ public sealed class OidResolutionBehaviorTests
     {
         // Even when OID is absent (Unknown sentinel), next() must still be called
         var oidMapService = new StubOidMapService(knownOid: null, metricName: null);
-        var behavior = new OidResolutionBehavior<SnmpOidReceived, Unit>(oidMapService);
+        var behavior = new OidResolutionBehavior<SnmpOidReceived, Unit>(oidMapService, NullLogger<OidResolutionBehavior<SnmpOidReceived, Unit>>.Instance);
         var notification = MakeNotification("9.9.9.9.9");
         var nextCalled = false;
 
