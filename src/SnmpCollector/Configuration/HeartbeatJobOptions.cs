@@ -1,0 +1,22 @@
+using System.ComponentModel.DataAnnotations;
+
+namespace SnmpCollector.Configuration;
+
+/// <summary>
+/// Heartbeat job timing configuration. Bound from "HeartbeatJob" section.
+/// </summary>
+public sealed class HeartbeatJobOptions
+{
+    public const string SectionName = "HeartbeatJob";
+
+    /// <summary>
+    /// The heartbeat OID sent in the loopback trap. Single source of truth -- avoids magic strings.
+    /// </summary>
+    public const string HeartbeatOid = "1.3.6.1.4.1.9999.1.1.1.0";
+
+    /// <summary>
+    /// Interval between heartbeat trap sends, in seconds.
+    /// </summary>
+    [Range(1, int.MaxValue)]
+    public int IntervalSeconds { get; set; } = 15;
+}
