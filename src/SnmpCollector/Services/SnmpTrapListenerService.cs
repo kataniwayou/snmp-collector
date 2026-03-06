@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using Lextm.SharpSnmpLib;
@@ -15,27 +14,20 @@ namespace SnmpCollector.Services;
 
 /// <summary>
 /// BackgroundService that binds a UDP socket on the configured address and port to receive
-/// SNMPv2c traps. Each received datagram is authenticated via community string against the
-/// device registry. Authenticated varbinds are written as VarbindEnvelopes to the per-device
-/// BoundedChannel for consumption by ChannelConsumerService.
+/// SNMPv2c traps. Each received datagram is validated against the Simetra.{DeviceName}
+/// community string convention. Device identity is extracted from the community string
+/// (no device registry dependency). Authenticated varbinds are written as VarbindEnvelopes
+/// to the single shared ITrapChannel for consumption by ChannelConsumerService.
 ///
 /// ARCHITECTURAL CONSTRAINT: This class NEVER references ISender, IPublisher, IMediator, or
-/// MediatR. All data flows through per-device channels via IDeviceChannelManager only.
+/// MediatR. All data flows through the shared channel via ITrapChannel only.
 /// </summary>
 public sealed class SnmpTrapListenerService : BackgroundService
 {
-    private readonly IDeviceRegistry _deviceRegistry;
-    private readonly IDeviceChannelManager _channelManager;
+    private readonly ITrapChannel _trapChannel;
     private readonly PipelineMetricService _pipelineMetrics;
     private readonly SnmpListenerOptions _listenerOptions;
     private readonly ILogger<SnmpTrapListenerService> _logger;
-
-    /// <summary>
-    /// Tracks which device names have received their first trap since startup.
-    /// ConcurrentDictionary.TryAdd is the atomic "log once" mechanism.
-    /// Value (byte) is unused; chosen for minimum memory footprint.
-    /// </summary>
-    private readonly ConcurrentDictionary<string, byte> _seenDevices = new();
 
     /// <summary>
     /// SharpSnmpLib requires a UserRegistry even for SNMPv2c (no USM users needed).
@@ -43,15 +35,24 @@ public sealed class SnmpTrapListenerService : BackgroundService
     /// </summary>
     private readonly UserRegistry _userRegistry = new();
 
+    /// <summary>
+    /// Indicates whether the UDP socket has been successfully bound.
+    /// Used by ReadinessHealthCheck (Plan 04) to verify trap listener is operational.
+    /// </summary>
+    private volatile bool _isBound;
+
+    /// <summary>
+    /// Public property for ReadinessHealthCheck to verify trap listener bound status.
+    /// </summary>
+    public bool IsBound => _isBound;
+
     public SnmpTrapListenerService(
-        IDeviceRegistry deviceRegistry,
-        IDeviceChannelManager channelManager,
+        ITrapChannel trapChannel,
         PipelineMetricService pipelineMetrics,
         IOptions<SnmpListenerOptions> listenerOptions,
         ILogger<SnmpTrapListenerService> logger)
     {
-        _deviceRegistry = deviceRegistry;
-        _channelManager = channelManager;
+        _trapChannel = trapChannel;
         _pipelineMetrics = pipelineMetrics;
         _listenerOptions = listenerOptions.Value;
         _logger = logger;
@@ -59,7 +60,7 @@ public sealed class SnmpTrapListenerService : BackgroundService
 
     /// <summary>
     /// Binds the UDP socket and enters the receive loop until cancellation is requested.
-    /// Each datagram is processed synchronously via ProcessDatagram — TryWrite is non-blocking.
+    /// Each datagram is processed synchronously via ProcessDatagram -- TryWrite is non-blocking.
     /// </summary>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -67,11 +68,11 @@ public sealed class SnmpTrapListenerService : BackgroundService
         var endpoint = new IPEndPoint(bindAddress, _listenerOptions.Port);
 
         using var udpClient = new UdpClient(endpoint);
+        _isBound = true;
 
         _logger.LogInformation(
-            "Trap listener bound to UDP {Port}, monitoring {DeviceCount} devices",
-            _listenerOptions.Port,
-            _deviceRegistry.AllDevices.Count);
+            "Trap listener bound to UDP {Port}",
+            _listenerOptions.Port);
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -96,18 +97,19 @@ public sealed class SnmpTrapListenerService : BackgroundService
     }
 
     /// <summary>
-    /// Overrides StopAsync to signal all channel consumers to drain after the receive loop exits.
-    /// Order: base.StopAsync cancels ExecuteAsync first, then CompleteAll signals consumers.
+    /// Overrides StopAsync to signal the shared channel to complete after the receive loop exits.
+    /// Order: base.StopAsync cancels ExecuteAsync first, then Complete signals consumer.
     /// </summary>
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
         await base.StopAsync(cancellationToken);
-        _channelManager.CompleteAll();
+        _trapChannel.Complete();
     }
 
     /// <summary>
-    /// Parses a UDP datagram, authenticates the sender, and routes each varbind to the
-    /// device's channel. Invalid packets and unauthorized senders are dropped with telemetry.
+    /// Parses a UDP datagram, validates the Simetra.* community string convention,
+    /// extracts device name from the community string, and routes each varbind to the
+    /// shared channel. Invalid community strings are dropped with Debug log.
     /// Internal for unit testing via InternalsVisibleTo.
     /// </summary>
     internal void ProcessDatagram(UdpReceiveResult result)
@@ -131,46 +133,22 @@ public sealed class SnmpTrapListenerService : BackgroundService
             if (message is not TrapV2Message trapV2)
                 continue;
 
-            // Normalize IPv6-mapped IPv4 addresses (e.g., ::ffff:192.168.1.1 → 192.168.1.1)
+            // Normalize IPv6-mapped IPv4 addresses (e.g., ::ffff:192.168.1.1 -> 192.168.1.1)
             var senderIp = result.RemoteEndPoint.Address.MapToIPv4();
             var receivedCommunity = trapV2.Community().ToString();
-            var variables = trapV2.Variables();
 
-            // Step 1 — Device lookup (must come first because DeviceInfo holds the expected community string)
-            if (!_deviceRegistry.TryGetDevice(senderIp, out var device))
+            // Validate Simetra.* convention and extract device name
+            if (!CommunityStringHelper.TryExtractDeviceName(receivedCommunity, out var deviceName))
             {
-                var firstOid = variables.Count > 0 ? variables[0].Id.ToString() : "(no varbinds)";
-                _logger.LogWarning(
-                    "Trap from unknown device {SourceIp}, first OID: {Oid}",
-                    senderIp,
-                    firstOid);
-                _pipelineMetrics.IncrementTrapUnknownDevice();
-                continue;
-            }
-
-            // Step 2 — Community string authentication (case-sensitive, RFC-compliant)
-            if (!string.Equals(receivedCommunity, device.CommunityString, StringComparison.Ordinal))
-            {
-                _logger.LogWarning(
-                    "Auth failure from {SourceIp} ({DeviceName}): received community '{ReceivedCommunity}'",
-                    senderIp,
-                    device.Name,
-                    receivedCommunity);
+                _logger.LogDebug(
+                    "Trap dropped: invalid community string from {SourceIp}",
+                    senderIp);
                 _pipelineMetrics.IncrementTrapAuthFailed();
                 continue;
             }
 
-            // Step 3 — First-contact logging (once per device since startup)
-            if (_seenDevices.TryAdd(device.Name, 0))
-            {
-                _logger.LogInformation(
-                    "First trap received from {DeviceName} ({Ip})",
-                    device.Name,
-                    senderIp);
-            }
-
-            // Step 4 — Route each varbind to the device's BoundedChannel
-            var writer = _channelManager.GetWriter(device.Name);
+            // Route each varbind to the shared channel
+            var variables = trapV2.Variables();
             foreach (var variable in variables)
             {
                 var envelope = new VarbindEnvelope(
@@ -178,11 +156,9 @@ public sealed class SnmpTrapListenerService : BackgroundService
                     Value: variable.Data,
                     TypeCode: variable.Data.TypeCode,
                     AgentIp: senderIp,
-                    DeviceName: device.Name);
+                    DeviceName: deviceName);
 
-                writer.TryWrite(envelope);
-                // Drop telemetry is handled by the itemDropped callback in DeviceChannelManager
-                // (increments snmp.trap.dropped and logs Warning every 100 drops per device)
+                _trapChannel.Writer.TryWrite(envelope);
             }
         }
     }

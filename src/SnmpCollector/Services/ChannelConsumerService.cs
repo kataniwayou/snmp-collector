@@ -7,33 +7,33 @@ using SnmpCollector.Telemetry;
 namespace SnmpCollector.Services;
 
 /// <summary>
-/// BackgroundService that drains VarbindEnvelopes from per-device BoundedChannels and dispatches
+/// BackgroundService that drains VarbindEnvelopes from the single shared ITrapChannel and dispatches
 /// each as an <see cref="SnmpOidReceived"/> request through the MediatR pipeline via ISender.Send.
 ///
 /// Design principle: only the consumer (never the listener) calls ISender.Send. The listener
-/// writes to channels; this service is the single point that bridges the channel backpressure
-/// layer to the MediatR IPipelineBehavior pipeline (Logging → Exception → Validation →
-/// OidResolution → OtelMetricHandler).
+/// writes to the shared channel; this service is the single point that bridges the channel
+/// backpressure layer to the MediatR IPipelineBehavior pipeline (Logging -> Exception ->
+/// Validation -> OidResolution -> OtelMetricHandler).
 ///
 /// ISender.Send is used (NOT IPublisher.Publish) because SnmpOidReceived implements
 /// IRequest&lt;Unit&gt;. IPublisher.Publish would bypass all IPipelineBehavior behaviors entirely.
 /// </summary>
 public sealed class ChannelConsumerService : BackgroundService
 {
-    private readonly IDeviceChannelManager _channelManager;
+    private readonly ITrapChannel _trapChannel;
     private readonly ISender _sender;
     private readonly ICorrelationService _correlation;
     private readonly PipelineMetricService _pipelineMetrics;
     private readonly ILogger<ChannelConsumerService> _logger;
 
     public ChannelConsumerService(
-        IDeviceChannelManager channelManager,
+        ITrapChannel trapChannel,
         ISender sender,
         ICorrelationService correlation,
         PipelineMetricService pipelineMetrics,
         ILogger<ChannelConsumerService> logger)
     {
-        _channelManager = channelManager;
+        _trapChannel = trapChannel;
         _sender = sender;
         _correlation = correlation;
         _pipelineMetrics = pipelineMetrics;
@@ -41,38 +41,17 @@ public sealed class ChannelConsumerService : BackgroundService
     }
 
     /// <summary>
-    /// Spawns one consumer Task per device (via Task.WhenAll) that reads VarbindEnvelopes
-    /// from the device's BoundedChannel until the channel is marked complete (graceful shutdown)
-    /// or the cancellation token is triggered (host shutdown).
+    /// Single consumer loop that reads VarbindEnvelopes from the shared trap channel,
+    /// constructs SnmpOidReceived with Source=Trap and pre-set DeviceName (extracted
+    /// from community string by the listener), increments the snmp.trap.received counter,
+    /// then dispatches via ISender.Send so all IPipelineBehavior behaviors execute.
     /// </summary>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var tasks = _channelManager.DeviceNames
-            .Select(name => ConsumeDeviceAsync(name, stoppingToken))
-            .ToArray();
+        _logger.LogInformation("Trap channel consumer started");
 
-        _logger.LogInformation("Channel consumers started for {Count} devices", tasks.Length);
-
-        await Task.WhenAll(tasks);
-
-        _logger.LogInformation("All channel consumers completed");
-    }
-
-    /// <summary>
-    /// Reads VarbindEnvelopes from the specified device's channel reader via ReadAllAsync,
-    /// constructs an SnmpOidReceived with Source=Trap and pre-set DeviceName (no second lookup),
-    /// increments the snmp.trap.received counter (PMET-06), then dispatches via ISender.Send
-    /// so all IPipelineBehavior behaviors execute. Exceptions are caught and logged at Warning
-    /// so the consumer loop continues processing subsequent envelopes.
-    /// </summary>
-    private async Task ConsumeDeviceAsync(string deviceName, CancellationToken ct)
-    {
-        var reader = _channelManager.GetReader(deviceName);
-
-        await foreach (var envelope in reader.ReadAllAsync(ct))
+        await foreach (var envelope in _trapChannel.Reader.ReadAllAsync(stoppingToken))
         {
-            // Capture the current global correlationId so all logs for this trap varbind
-            // carry a consistent ID even if the global one rotates mid-processing.
             _correlation.OperationCorrelationId = _correlation.CurrentCorrelationId;
             try
             {
@@ -80,26 +59,27 @@ public sealed class ChannelConsumerService : BackgroundService
                 {
                     Oid        = envelope.Oid,
                     AgentIp    = envelope.AgentIp,
-                    DeviceName = envelope.DeviceName,   // pre-resolved by listener — no double lookup
+                    DeviceName = envelope.DeviceName,
                     Value      = envelope.Value,
-                    Source     = SnmpSource.Trap,        // ALWAYS Trap for trap-originated events
+                    Source     = SnmpSource.Trap,
                     TypeCode   = envelope.TypeCode,
                 };
 
-                _pipelineMetrics.IncrementTrapReceived();    // snmp.trap.received (PMET-06)
-                await _sender.Send(msg, ct);                 // ISender.Send — all behaviors execute
+                _pipelineMetrics.IncrementTrapReceived();
+                await _sender.Send(msg, stoppingToken);
             }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
-                break;     // graceful shutdown — exit consumer loop
+                break;
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex,
                     "Error processing varbind {Oid} for {DeviceName}",
-                    envelope.Oid, deviceName);
-                // continue to next envelope — do not crash the consumer
+                    envelope.Oid, envelope.DeviceName);
             }
         }
+
+        _logger.LogInformation("Trap channel consumer completed");
     }
 }
