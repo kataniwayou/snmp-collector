@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: simetra-config
+  namespace: simetra
+data:
+  appsettings.k8s.json: |
+    {
+      "Site": {
+        "Name": "site-lab-01"
+      },
+      "Otlp": {
+        "Endpoint": "http://otel-collector:4317",
+        "ServiceName": "simetra-supervisor"
+      },
+      "SnmpListener": {
+        "Port": 10162
+      },
+      "Devices": [],
+      "Logging": {
+        "LogLevel": {
+          "Default": "Debug"
+        },
+        "EnableConsole": true
+      }
+    }
