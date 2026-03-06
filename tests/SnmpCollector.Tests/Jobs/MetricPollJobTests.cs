@@ -33,7 +33,6 @@ public sealed class MetricPollJobTests : IDisposable
     private const string DeviceName       = "test-router";
     private const string DeviceIp         = "192.168.1.1";
     private const int    DevicePort       = 161;
-    private const string DeviceCommunity  = "Simetra.test-router";
     private const string IfInOctetsOid    = "1.3.6.1.2.1.2.2.1.10.1";
     private const string IfOutOctetsOid   = "1.3.6.1.2.1.2.2.1.16.1";
 
@@ -82,7 +81,7 @@ public sealed class MetricPollJobTests : IDisposable
     private static DeviceInfo MakeDevice(params string[] pollOids)
     {
         var pollGroup = new MetricPollInfo(0, pollOids.ToList(), 30);
-        return new DeviceInfo(DeviceName, DeviceIp, DevicePort, DeviceCommunity, [pollGroup]);
+        return new DeviceInfo(DeviceName, DeviceIp, DevicePort, [pollGroup]);
     }
 
     private MetricPollJob CreateJob(
@@ -176,15 +175,15 @@ public sealed class MetricPollJobTests : IDisposable
     }
 
     // -------------------------------------------------------------------------
-    // Test 3: Device Port and CommunityString used in SNMP GET request
+    // Test 3: Device Port used and CommunityString derived from device name
     // -------------------------------------------------------------------------
 
     [Fact]
-    public async Task Execute_UsesDevicePortAndCommunityString()
+    public async Task Execute_UsesDevicePortAndDerivesCommunityString()
     {
         // Arrange -- device with custom port
         var pollGroup = new MetricPollInfo(0, [IfInOctetsOid], 30);
-        var device = new DeviceInfo("custom-device", "10.0.0.99", 1161, "Simetra.custom-device", [pollGroup]);
+        var device = new DeviceInfo("custom-device", "10.0.0.99", 1161, [pollGroup]);
 
         var snmpClient = new StubSnmpClient { Response = new List<Variable>() };
         var sender     = new CapturingSender();
