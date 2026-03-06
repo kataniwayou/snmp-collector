@@ -10,9 +10,9 @@ namespace SnmpCollector.Jobs;
 
 /// <summary>
 /// Quartz <see cref="IJob"/> that executes a single SNMP GET poll for one device/poll-group pair.
-/// Prepends sysUpTime to every GET so it is collected as a gauge metric for uptime monitoring.
 /// Each returned varbind is dispatched individually via <see cref="ISender.Send"/> into the
 /// MediatR pipeline (Logging → Exception → Validation → OidResolution → OtelMetricHandler).
+/// Uses per-device Port and CommunityString from configuration (no hardcoded defaults).
 /// <para>
 /// <see cref="DisallowConcurrentExecution"/> prevents pile-up on slow devices: if a previous
 /// execution is still running when the trigger fires, Quartz skips the fire.
@@ -21,8 +21,6 @@ namespace SnmpCollector.Jobs;
 [DisallowConcurrentExecution]
 public sealed class MetricPollJob : IJob
 {
-    private const string SysUpTimeOid = "1.3.6.1.2.1.1.3.0";
-
     private readonly IDeviceRegistry _deviceRegistry;
     private readonly IDeviceUnreachabilityTracker _unreachabilityTracker;
     private readonly ISender _sender;
@@ -76,15 +74,13 @@ public sealed class MetricPollJob : IJob
 
         var pollGroup = device.PollGroups[pollIndex];
 
-        // Build variable list: sysUpTime first for uptime monitoring, then poll group OIDs.
-        var variables = new List<Variable>(pollGroup.Oids.Count + 1)
-        {
-            new Variable(new ObjectIdentifier(SysUpTimeOid))
-        };
-        variables.AddRange(pollGroup.Oids.Select(oid => new Variable(new ObjectIdentifier(oid))));
+        // Build variable list from poll group OIDs only (no sysUpTime prepend).
+        var variables = pollGroup.Oids
+            .Select(oid => new Variable(new ObjectIdentifier(oid)))
+            .ToList();
 
-        var endpoint = new IPEndPoint(IPAddress.Parse(device.IpAddress), 161);
-        var community = new OctetString(CommunityStringHelper.DeriveFromDeviceName(device.Name));
+        var endpoint = new IPEndPoint(IPAddress.Parse(device.IpAddress), device.Port);
+        var community = new OctetString(device.CommunityString);
 
         try
         {

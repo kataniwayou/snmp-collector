@@ -30,11 +30,12 @@ namespace SnmpCollector.Tests.Jobs;
 [Collection(NonParallelCollection.Name)]
 public sealed class MetricPollJobTests : IDisposable
 {
-    private const string DeviceName     = "test-router";
-    private const string DeviceIp       = "192.168.1.1";
-    private const string SysUpTimeOid   = "1.3.6.1.2.1.1.3.0";
-    private const string IfInOctetsOid  = "1.3.6.1.2.1.2.2.1.10.1";
-    private const string IfOutOctetsOid = "1.3.6.1.2.1.2.2.1.16.1";
+    private const string DeviceName       = "test-router";
+    private const string DeviceIp         = "192.168.1.1";
+    private const int    DevicePort       = 161;
+    private const string DeviceCommunity  = "Simetra.test-router";
+    private const string IfInOctetsOid    = "1.3.6.1.2.1.2.2.1.10.1";
+    private const string IfOutOctetsOid   = "1.3.6.1.2.1.2.2.1.16.1";
 
     // -------------------------------------------------------------------------
     // Test infrastructure
@@ -81,7 +82,7 @@ public sealed class MetricPollJobTests : IDisposable
     private static DeviceInfo MakeDevice(params string[] pollOids)
     {
         var pollGroup = new MetricPollInfo(0, pollOids.ToList(), 30);
-        return new DeviceInfo(DeviceName, DeviceIp, [pollGroup]);
+        return new DeviceInfo(DeviceName, DeviceIp, DevicePort, DeviceCommunity, [pollGroup]);
     }
 
     private MetricPollJob CreateJob(
@@ -141,10 +142,9 @@ public sealed class MetricPollJobTests : IDisposable
     [Fact]
     public async Task Execute_SuccessfulPoll_DispatchesEachVarbindViaSender()
     {
-        // Arrange -- sysUpTime + 2 OIDs in response
+        // Arrange -- 2 OIDs in response (no sysUpTime prepend)
         var response = new List<Variable>
         {
-            new Variable(new ObjectIdentifier(SysUpTimeOid),   new TimeTicks(50000)),
             new Variable(new ObjectIdentifier(IfInOctetsOid),  new Gauge32(1000)),
             new Variable(new ObjectIdentifier(IfOutOctetsOid), new Gauge32(2000)),
         };
@@ -159,11 +159,10 @@ public sealed class MetricPollJobTests : IDisposable
         // Act
         await job.Execute(MakeContext());
 
-        // Assert -- all 3 varbinds dispatched
-        Assert.Equal(3, sender.Sent.Count);
+        // Assert -- both varbinds dispatched
+        Assert.Equal(2, sender.Sent.Count);
 
         var oids = sender.Sent.Select(m => m.Oid).ToList();
-        Assert.Contains(SysUpTimeOid, oids);
         Assert.Contains(IfInOctetsOid, oids);
         Assert.Contains(IfOutOctetsOid, oids);
 
@@ -177,37 +176,30 @@ public sealed class MetricPollJobTests : IDisposable
     }
 
     // -------------------------------------------------------------------------
-    // Test 3: sysUpTime dispatched as a normal varbind (no propagation to subsequent OIDs)
+    // Test 3: Device Port and CommunityString used in SNMP GET request
     // -------------------------------------------------------------------------
 
     [Fact]
-    public async Task Execute_SuccessfulPoll_DispatchesSysUpTimeAsNormalVarbind()
+    public async Task Execute_UsesDevicePortAndCommunityString()
     {
-        // Arrange -- sysUpTime=500, then one OID
-        var response = new List<Variable>
-        {
-            new Variable(new ObjectIdentifier(SysUpTimeOid),  new TimeTicks(500)),
-            new Variable(new ObjectIdentifier(IfInOctetsOid), new Gauge32(100)),
-        };
+        // Arrange -- device with custom port
+        var pollGroup = new MetricPollInfo(0, [IfInOctetsOid], 30);
+        var device = new DeviceInfo("custom-device", "10.0.0.99", 1161, "Simetra.custom-device", [pollGroup]);
 
-        var snmpClient = new StubSnmpClient { Response = response };
+        var snmpClient = new StubSnmpClient { Response = new List<Variable>() };
         var sender     = new CapturingSender();
         var job        = CreateJob(
-            registry:   new StubDeviceRegistry([MakeDevice(IfInOctetsOid)]),
+            registry:   new StubDeviceRegistry([device]),
             snmpClient: snmpClient,
             sender:     sender);
 
         // Act
-        await job.Execute(MakeContext());
+        await job.Execute(MakeContext(deviceName: "custom-device"));
 
-        // Assert -- 2 messages dispatched with correct OIDs
-        Assert.Equal(2, sender.Sent.Count);
-
-        var sysUpTimeMsg  = sender.Sent.Single(m => m.Oid == SysUpTimeOid);
-        var ifInOctetsMsg = sender.Sent.Single(m => m.Oid == IfInOctetsOid);
-
-        Assert.Equal(SnmpType.TimeTicks, sysUpTimeMsg.TypeCode);
-        Assert.Equal(SnmpType.Gauge32, ifInOctetsMsg.TypeCode);
+        // Assert -- StubSnmpClient captured endpoint and community
+        Assert.Equal(1161, snmpClient.LastEndpoint!.Port);
+        Assert.Equal(IPAddress.Parse("10.0.0.99"), snmpClient.LastEndpoint.Address);
+        Assert.Equal("Simetra.custom-device", snmpClient.LastCommunity!.ToString());
     }
 
     // -------------------------------------------------------------------------
@@ -421,11 +413,14 @@ public sealed class MetricPollJobTests : IDisposable
         }
     }
 
-    /// <summary>ISnmpClient stub that returns a preconfigured response or throws an exception.</summary>
+    /// <summary>ISnmpClient stub that returns a preconfigured response or throws an exception.
+    /// Captures LastEndpoint and LastCommunity for assertion.</summary>
     private sealed class StubSnmpClient : ISnmpClient
     {
         public IList<Variable>? Response { get; set; }
         public Exception? ExceptionToThrow { get; set; }
+        public IPEndPoint? LastEndpoint { get; private set; }
+        public OctetString? LastCommunity { get; private set; }
 
         public Task<IList<Variable>> GetAsync(
             VersionCode version,
@@ -434,6 +429,8 @@ public sealed class MetricPollJobTests : IDisposable
             IList<Variable> variables,
             CancellationToken ct)
         {
+            LastEndpoint = endpoint;
+            LastCommunity = community;
             if (ExceptionToThrow is not null)
                 throw ExceptionToThrow;
             return Task.FromResult<IList<Variable>>(Response ?? new List<Variable>());
