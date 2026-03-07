@@ -44,6 +44,9 @@ See `.planning/milestones/` for archived roadmaps and requirements.
 - JobIntervalRegistry.Unregister and LivenessVectorService.Remove for cleanup on config reload
 - SimetraConfigModel POCO unifies OidMap + Devices in single JSON document
 - DeviceOptions.CommunityString optional override; null falls back to Simetra.{Name} convention
+- DynamicPollScheduler registered in both K8s and local dev modes for symmetric ReconcileAsync
+- Thread pool ceiling of 50 (generous headroom for dynamic device additions at runtime)
+- Program.cs no longer auto-scans oidmap-*.json or loads devices.json; local dev uses simetra-config.json
 - RBAC Role named simetra-role covers leases + configmaps (renamed from simetra-lease-role)
 - DynamicPollScheduler.ReconcileAsync diffs Quartz metric-poll-* jobs and adds/removes/reschedules
 - ConfigMapWatcherService watches simetra-config ConfigMap via K8s API with auto-reconnect
