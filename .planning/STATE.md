@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Core value:** Every SNMP OID — from a trap or a poll — gets resolved, typed correctly, and pushed to Prometheus where it's queryable in Grafana within seconds.
-**Current focus:** v1.1 Device Simulation — Phase 11: OID Map Design and OBP Population
+**Current focus:** v1.1 Device Simulation — Phase 12 (next)
 
 ## Current Position
 
 Phase: 11 of 14 (OID Map Design and OBP Population)
-Plan: 02 of 03 complete
-Status: In progress
-Last activity: 2026-03-07 — Completed 11-02-PLAN.md (config auto-scan and K8s directory mount)
+Plan: 03 of 03 complete
+Status: Phase complete
+Last activity: 2026-03-07 — Completed 11-03-PLAN.md (OID map auto-scan tests and config cleanup)
 
-Progress: [##########..........] 48/48 v1.0 complete, 2/9 v1.1 plans
+Progress: [##########..........] 48/48 v1.0 complete, 3/9 v1.1 plans
 
 ## Milestone History
 
@@ -34,7 +34,7 @@ See `.planning/milestones/` for archived roadmaps and requirements.
 - Community string convention: Simetra.{DeviceName} for both auth and device identity
 - host_name from NODE_NAME env var (K8s spec.nodeName), pod_name from HOSTNAME
 - Heartbeat is internal infrastructure — pipeline metrics prove liveness, no metric export
-- OBP OID maps stored as separate configmap keys (oidmap-obp.json), not merged into appsettings OidMap
+- OBP OID maps stored as separate configmap keys (oidmap-obp.json) with "OidMap" section wrapper for config binding
 - OID map naming: obp_{metric}_L{linkNum} for OBP device type
 - Config auto-scan: CONFIG_DIRECTORY env var with ContentRootPath/config fallback
 - K8s directory mount at /app/config (no subPath) enables ConfigMap hot-reload
@@ -51,5 +51,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-07
-Stopped at: Completed 11-02-PLAN.md (config auto-scan and K8s directory mount)
+Stopped at: Completed 11-03-PLAN.md (Phase 11 complete)
 Resume file: None
