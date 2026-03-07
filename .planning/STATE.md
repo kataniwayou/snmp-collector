@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-03-07)
 Phase: 14 of 14 (K8s Integration and E2E)
 Plan: 2 of 3
 Status: In progress
-Last activity: 2026-03-07 — Completed 14-02-PLAN.md
+Last activity: 2026-03-07 — Completed 14-01-PLAN.md (DNS resolution, CommunityString, devices.json loading)
 
 Progress: [################....] 48/48 v1.0 complete, 8/9 v1.1 plans
 
@@ -38,6 +38,9 @@ See `.planning/milestones/` for archived roadmaps and requirements.
 - OID map naming: obp_{metric}_L{linkNum} for OBP, npb_{metric} / npb_port_{metric}_P{n} for NPB
 - Config auto-scan: CONFIG_DIRECTORY env var with ContentRootPath/config fallback
 - K8s directory mount at /app/config (no subPath) enables ConfigMap hot-reload
+- DeviceRegistry resolves K8s Service DNS names at startup via Dns.GetHostAddresses fallback
+- DeviceOptions.CommunityString optional override; null falls back to Simetra.{Name} convention
+- devices.json auto-loaded from CONFIG_DIRECTORY alongside oidmap-*.json files
 
 ### Known Tech Debt
 
@@ -51,5 +54,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-07
-Stopped at: Completed 14-02-PLAN.md
+Stopped at: Completed 14-01-PLAN.md
 Resume file: None
