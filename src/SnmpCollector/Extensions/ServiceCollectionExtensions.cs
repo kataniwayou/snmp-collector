@@ -228,6 +228,10 @@ public static class ServiceCollectionExtensions
             services.AddSingleton<K8sLeaseElection>();
             services.AddSingleton<ILeaderElection>(sp => sp.GetRequiredService<K8sLeaseElection>());
             services.AddHostedService(sp => sp.GetRequiredService<K8sLeaseElection>());
+
+            // Phase 15: ConfigMap watcher for live reload of OID maps + device config
+            services.AddSingleton<ConfigMapWatcherService>();
+            services.AddHostedService(sp => sp.GetRequiredService<ConfigMapWatcherService>());
         }
         else
         {
@@ -262,12 +266,6 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<IValidateOptions<SnmpListenerOptions>, SnmpListenerOptionsValidator>();
 
-        // OidMapOptions: "OidMap" is a flat JSON object of OID->name pairs.
-        // Bind the section directly into Entries dictionary. No ValidateOnStart -- empty map is valid.
-        services.AddOptions<OidMapOptions>()
-            .Configure<IConfiguration>((opts, config) =>
-                config.GetSection(OidMapOptions.SectionName).Bind(opts.Entries));
-
         // --- Phase 8: Liveness configuration ---
         services.AddOptions<LivenessOptions>()
             .Bind(configuration.GetSection(LivenessOptions.SectionName))
@@ -281,10 +279,20 @@ public static class ServiceCollectionExtensions
             .ValidateOnStart();
 
         // --- Phase 2 pipeline singletons ---
-        // DeviceRegistry depends on IOptions<DevicesOptions>.
-        // OidMapService depends on IOptionsMonitor<OidMapOptions> for hot-reload on appsettings change.
+        // DeviceRegistry depends on IOptions<DevicesOptions> for initial startup construction.
+        // In K8s mode, ConfigMapWatcherService calls ReloadAsync to overwrite with ConfigMap data.
+        // In local dev mode, Program.cs calls ReloadAsync after build with simetra-config.json data.
         services.AddSingleton<IDeviceRegistry, DeviceRegistry>();
-        services.AddSingleton<IOidMapService, OidMapService>();
+
+        // OidMapService: initial empty map. In K8s mode, ConfigMapWatcherService populates it.
+        // In local dev mode, populated after DI build from simetra-config.json.
+        services.AddSingleton<OidMapService>(sp =>
+            new OidMapService(new Dictionary<string, string>(), sp.GetRequiredService<ILogger<OidMapService>>()));
+        services.AddSingleton<IOidMapService>(sp => sp.GetRequiredService<OidMapService>());
+
+        // Phase 15: DynamicPollScheduler available in both K8s and local dev modes.
+        // K8s: called by ConfigMapWatcherService. Local dev: called by Program.cs after build.
+        services.AddSingleton<DynamicPollScheduler>();
 
         // --- Phase 2: Cardinality audit (runs during StartingAsync, before Quartz starts) ---
         // IHostedLifecycleService.StartingAsync fires before IHostedService.StartAsync,
@@ -389,18 +397,21 @@ public static class ServiceCollectionExtensions
         // Populated here during Quartz configuration, then registered as singleton.
         var intervalRegistry = new JobIntervalRegistry();
 
-        // Thread pool: 2 = CorrelationJob + HeartbeatJob, plus one thread per poll group across all devices.
-        var jobCount = 2; // CorrelationJob + HeartbeatJob
+        // Thread pool: generous ceiling to accommodate dynamic device additions at runtime.
+        // Static jobs (CorrelationJob + HeartbeatJob) = 2, plus headroom for poll jobs.
+        var initialJobCount = 2; // CorrelationJob + HeartbeatJob
         foreach (var device in devicesOptions.Devices)
-            jobCount += device.MetricPolls.Count;
+            initialJobCount += device.MetricPolls.Count;
+        var threadPoolSize = Math.Max(initialJobCount, 50);
 
         services.AddQuartz(q =>
         {
             q.UseInMemoryStore();
 
-            // Auto-scaled thread pool: one thread per registered job (1:1 from Simetra reference).
-            // Replaces Quartz default of 10. Prevents any job from waiting for a free thread.
-            q.UseDefaultThreadPool(maxConcurrency: jobCount);
+            // Thread pool with generous ceiling: accommodates dynamic device additions at runtime
+            // without needing to resize. Initial jobs get threads immediately; headroom for
+            // DynamicPollScheduler to add new metric-poll jobs via ConfigMap reload.
+            q.UseDefaultThreadPool(maxConcurrency: threadPoolSize);
 
             // Correlation job: rotates the global correlation ID on a fixed interval.
             // Misfire handling: NextWithRemainingCount -- skip stale fires, wait for next.
