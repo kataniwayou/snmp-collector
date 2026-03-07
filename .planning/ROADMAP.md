@@ -4,7 +4,7 @@
 
 - v1.0 Foundation - Phases 1-10 (shipped 2026-03-07)
 - v1.1 Device Simulation - Phases 11-14 (shipped 2026-03-07)
-- v1.2 Operational Enhancements - Phases 15+ (not started)
+- v1.2 Operational Enhancements - Phases 15+ (shipped 2026-03-07)
 
 ## Phases
 
@@ -82,11 +82,11 @@ Plans:
 - [x] 14-02-PLAN.md -- ConfigMap devices.json with all 92 OIDs for OBP-01 and NPB-01
 - [x] 14-03-PLAN.md -- E2E verification script querying Prometheus for poll and trap metrics
 
-### v1.2 Operational Enhancements (Not Started)
+### v1.2 Operational Enhancements (Complete)
 
 **Milestone Goal:** Consolidate configuration into a single documented ConfigMap, replace file-based hot-reload with K8s API watch, and enable dynamic device/poll schedule reloading without pod restart.
 
-- [ ] **Phase 15: K8s ConfigMap Watch and Unified Config** - Single ConfigMap with documented JSONC, K8s API watch for live reload of OID maps and device/poll config
+- [x] **Phase 15: K8s ConfigMap Watch and Unified Config** - Single ConfigMap with documented JSONC, K8s API watch for live reload of OID maps and device/poll config
 
 ## Phase Details (v1.2)
 
@@ -103,11 +103,11 @@ Plans:
   6. Local development fallback works without K8s (file-based loading when not in cluster)
 **Plans**: 5 plans
 Plans:
-- [ ] 15-01-PLAN.md -- Unified config model (SimetraConfigModel), mutable OidMapService + DeviceRegistry, registry cleanup methods, updated tests
-- [ ] 15-02-PLAN.md -- ConfigMapWatcherService (K8s API watch with reconnect) and DynamicPollScheduler (Quartz job reconciliation)
-- [ ] 15-03-PLAN.md -- DI wiring (ServiceCollectionExtensions + Program.cs), local dev config file, cleanup of legacy file scanning
-- [ ] 15-04-PLAN.md -- K8s RBAC and ConfigMap manifest updates, unified simetra-config.json key, delete legacy oidmap files
-- [ ] 15-05-PLAN.md -- Unit tests for DynamicPollScheduler reconciliation (add/remove/reschedule scenarios)
+- [x] 15-01-PLAN.md -- Unified config model (SimetraConfigModel), mutable OidMapService + DeviceRegistry, registry cleanup methods, updated tests
+- [x] 15-02-PLAN.md -- ConfigMapWatcherService (K8s API watch with reconnect) and DynamicPollScheduler (Quartz job reconciliation)
+- [x] 15-03-PLAN.md -- DI wiring (ServiceCollectionExtensions + Program.cs), local dev config file, cleanup of legacy file scanning
+- [x] 15-04-PLAN.md -- K8s RBAC and ConfigMap manifest updates, unified simetra-config.json key, delete legacy oidmap files
+- [x] 15-05-PLAN.md -- Unit tests for DynamicPollScheduler reconciliation (add/remove/reschedule scenarios)
 
 ## Progress
 
@@ -120,4 +120,4 @@ Plans:
 | 12. NPB OID Population | v1.1 | 1/1 | Complete | 2026-03-07 |
 | 13. Simulator Refinement | v1.1 | 3/3 | Complete | 2026-03-07 |
 | 14. K8s Integration and E2E | v1.1 | 3/3 | Complete | 2026-03-07 |
-| 15. K8s ConfigMap Watch and Unified Config | v1.2 | 0/5 | Not started | - |
+| 15. K8s ConfigMap Watch and Unified Config | v1.2 | 5/5 | Complete | 2026-03-07 |

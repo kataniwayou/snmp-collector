@@ -5,22 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Core value:** Every SNMP OID — from a trap or a poll — gets resolved, typed correctly, and pushed to Prometheus where it's queryable in Grafana within seconds.
-**Current focus:** v1.2 Operational Enhancements — Phase 15 (next)
+**Current focus:** v1.2 Operational Enhancements — Complete
 
 ## Current Position
 
 Phase: 15 (K8s ConfigMap Watch and Unified Config)
 Plan: 5 of 5
-Status: In progress
-Last activity: 2026-03-07 — Completed 15-04-PLAN.md (K8s manifests: unified ConfigMap, RBAC, cleanup)
+Status: Complete
+Last activity: 2026-03-07 — Phase 15 complete (all 5 plans executed, verified)
 
-Progress: [################____] 4/5 Phase 15 plans
+Progress: [####################] 48/48 v1.0 complete, 9/9 v1.1 plans, 5/5 v1.2 plans
 
 ## Milestone History
 
 | Milestone | Phases | Plans | Shipped |
 |-----------|--------|-------|---------|
 | v1.0 Foundation | 1-10 | 48 | 2026-03-07 |
+| v1.1 Device Simulation | 11-14 | 10 | 2026-03-07 |
 
 See `.planning/MILESTONES.md` for details.
 See `.planning/milestones/` for archived roadmaps and requirements.
@@ -64,5 +65,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-07
-Stopped at: Completed 15-04-PLAN.md
+Stopped at: Phase 15 complete
 Resume file: None

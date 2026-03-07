@@ -39,13 +39,13 @@ Requirements for v1.2 Operational Enhancements milestone.
 
 ### Configuration Management
 
-- [ ] **CFG-01**: Single ConfigMap key with all OID maps + device entries + JSONC documentation (replaces separate oidmap-*.json and devices.json)
-- [ ] **CFG-02**: K8s API watch detects ConfigMap changes and reloads config at runtime (replaces file-based IOptionsMonitor hot-reload)
-- [ ] **CFG-03**: Local development fallback loads config from file when not running in K8s cluster
+- [x] **CFG-01**: Single ConfigMap key with all OID maps + device entries + JSONC documentation (replaces separate oidmap-*.json and devices.json)
+- [x] **CFG-02**: K8s API watch detects ConfigMap changes and reloads config at runtime (replaces file-based IOptionsMonitor hot-reload)
+- [x] **CFG-03**: Local development fallback loads config from file when not running in K8s cluster
 
 ### Operational Enhancements
 
-- [ ] **OPS-01**: Hot-reloadable device configuration (add/remove devices, change OIDs/intervals without pod restart, Quartz jobs re-registered dynamically)
+- [x] **OPS-01**: Hot-reloadable device configuration (add/remove devices, change OIDs/intervals without pod restart, Quartz jobs re-registered dynamically)
 
 ## v2 Requirements
 
@@ -88,14 +88,14 @@ Requirements for v1.2 Operational Enhancements milestone.
 | POLL-01 | Phase 14 | Complete |
 | POLL-02 | Phase 14 | Complete |
 
-| CFG-01 | Phase 15 | Pending |
-| CFG-02 | Phase 15 | Pending |
-| CFG-03 | Phase 15 | Pending |
-| OPS-01 | Phase 15 | Pending |
+| CFG-01 | Phase 15 | Complete |
+| CFG-02 | Phase 15 | Complete |
+| CFG-03 | Phase 15 | Complete |
+| OPS-01 | Phase 15 | Complete |
 
 **Coverage:**
 - v1.1 requirements: 14 total (14 complete)
-- v1.2 requirements: 4 total (0 complete)
+- v1.2 requirements: 4 total (4 complete)
 - Mapped to phases: 18
 - Unmapped: 0
 
