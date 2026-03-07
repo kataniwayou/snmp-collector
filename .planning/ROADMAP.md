@@ -20,7 +20,7 @@
 
 - [x] **Phase 11: OID Map Design and OBP Population** - Establish naming convention, decide map structure, populate OBP OIDs with docs
 - [x] **Phase 12: NPB OID Population** - Populate NPB OIDs with documentation using established conventions
-- [ ] **Phase 13: Simulator Refinement** - Update both simulators for realistic OID subsets and trap behavior
+- [x] **Phase 13: Simulator Refinement** - Update both simulators for realistic OID subsets and trap behavior
 - [ ] **Phase 14: K8s Integration and E2E** - Deploy simulator pods, update ConfigMap, verify end-to-end pipeline
 
 ## Phase Details
@@ -61,9 +61,9 @@ Plans:
   5. Both simulators authenticate using `Simetra.{DeviceName}` community string convention (e.g., `Simetra.OBP-01`, `Simetra.NPB-01`)
 **Plans**: 3 plans
 Plans:
-- [ ] 13-01-PLAN.md -- OBP simulator rewrite: 24 OIDs, power random walk, StateChange traps, Simetra.OBP-01 community
-- [ ] 13-02-PLAN.md -- NPB simulator rewrite: 68 OIDs, traffic profiles, system health, portLinkChange traps, Simetra.NPB-01 community
-- [ ] 13-03-PLAN.md -- K8s deployment YAML updates: health probes, env vars, configmap-devices OID references
+- [x] 13-01-PLAN.md -- OBP simulator rewrite: 24 OIDs, power random walk, StateChange traps, Simetra.OBP-01 community
+- [x] 13-02-PLAN.md -- NPB simulator rewrite: 68 OIDs, traffic profiles, system health, portLinkChange traps, Simetra.NPB-01 community
+- [x] 13-03-PLAN.md -- K8s deployment YAML updates: health probes, env vars, configmap-devices OID references
 
 ### Phase 14: K8s Integration and E2E
 **Goal**: Simulator pods are deployed in K8s, snmp-collector ConfigMap has correct MetricPoll groups for both device types, and the full pipeline works end-to-end
@@ -86,5 +86,5 @@ Plans:
 | 1-10 | v1.0 | 48/48 | Complete | 2026-03-07 |
 | 11. OID Map Design and OBP Population | v1.1 | 3/3 | Complete | 2026-03-07 |
 | 12. NPB OID Population | v1.1 | 1/1 | Complete | 2026-03-07 |
-| 13. Simulator Refinement | v1.1 | 0/3 | Not started | - |
+| 13. Simulator Refinement | v1.1 | 3/3 | Complete | 2026-03-07 |
 | 14. K8s Integration and E2E | v1.1 | 0/TBD | Not started | - |

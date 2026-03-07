@@ -16,11 +16,11 @@ Requirements for v1.1 Device Simulation milestone. Each maps to roadmap phases.
 
 ### Simulator
 
-- [ ] **SIM-01**: OBP simulator updated to 4 links with realistic OID subset (not exhaustive MIB)
-- [ ] **SIM-02**: OBP simulator sends StateChange traps for all 4 links
-- [ ] **SIM-03**: NPB simulator updated to realistic OID subset across 8 ports (core health + per-port traffic)
-- [ ] **SIM-04**: NPB simulator sends realistic trap types (link up/down)
-- [ ] **SIM-05**: Both simulators use `Simetra.{DeviceName}` community string convention
+- [x] **SIM-01**: OBP simulator updated to 4 links with realistic OID subset (not exhaustive MIB)
+- [x] **SIM-02**: OBP simulator sends StateChange traps for all 4 links
+- [x] **SIM-03**: NPB simulator updated to realistic OID subset across 8 ports (core health + per-port traffic)
+- [x] **SIM-04**: NPB simulator sends realistic trap types (link up/down)
+- [x] **SIM-05**: Both simulators use `Simetra.{DeviceName}` community string convention
 - [ ] **SIM-06**: Simulator K8s deployments updated with snmp-collector integration
 
 ### Device Documentation
@@ -64,11 +64,11 @@ Requirements for v1.1 Device Simulation milestone. Each maps to roadmap phases.
 | OIDM-02 | Phase 11 | Complete |
 | OIDM-03 | Phase 11 | Complete |
 | OIDM-04 | Phase 12 | Complete |
-| SIM-01 | Phase 13 | Pending |
-| SIM-02 | Phase 13 | Pending |
-| SIM-03 | Phase 13 | Pending |
-| SIM-04 | Phase 13 | Pending |
-| SIM-05 | Phase 13 | Pending |
+| SIM-01 | Phase 13 | Complete |
+| SIM-02 | Phase 13 | Complete |
+| SIM-03 | Phase 13 | Complete |
+| SIM-04 | Phase 13 | Complete |
+| SIM-05 | Phase 13 | Complete |
 | SIM-06 | Phase 14 | Pending |
 | DOC-01 | Phase 11 | Complete |
 | DOC-02 | Phase 12 | Complete |
