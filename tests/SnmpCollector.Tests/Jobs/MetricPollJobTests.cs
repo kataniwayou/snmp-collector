@@ -309,7 +309,32 @@ public sealed class MetricPollJobTests : IDisposable
     }
 
     // -------------------------------------------------------------------------
-    // Test 8: PollExecuted increments on success and failure, NOT on device-not-found
+    // Test 8: Explicit CommunityString used instead of convention derivation
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task Execute_ExplicitCommunityString_UsedInsteadOfConvention()
+    {
+        // Arrange -- device with explicit community string
+        var pollGroup = new MetricPollInfo(0, [IfInOctetsOid], 30);
+        var device = new DeviceInfo("custom-device", "10.0.0.99", 1161, [pollGroup], "my-explicit-community");
+
+        var snmpClient = new StubSnmpClient { Response = new List<Variable>() };
+        var sender     = new CapturingSender();
+        var job        = CreateJob(
+            registry:   new StubDeviceRegistry([device]),
+            snmpClient: snmpClient,
+            sender:     sender);
+
+        // Act
+        await job.Execute(MakeContext(deviceName: "custom-device"));
+
+        // Assert -- community string should be the explicit one, not Simetra.custom-device
+        Assert.Equal("my-explicit-community", snmpClient.LastCommunity!.ToString());
+    }
+
+    // -------------------------------------------------------------------------
+    // Test 9: PollExecuted increments on success and failure, NOT on device-not-found
     // -------------------------------------------------------------------------
 
     [Fact]

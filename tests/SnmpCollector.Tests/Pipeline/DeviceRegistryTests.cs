@@ -125,6 +125,67 @@ public sealed class DeviceRegistryTests
     }
 
     [Fact]
+    public void Constructor_DnsHostname_ResolvesToIpAddress()
+    {
+        // "localhost" is universally resolvable to 127.0.0.1
+        var opts = new DevicesOptions
+        {
+            Devices =
+            [
+                new DeviceOptions
+                {
+                    Name = "dns-device",
+                    IpAddress = "localhost",
+                    MetricPolls = []
+                }
+            ]
+        };
+
+        var sut = CreateRegistry(opts);
+
+        var found = sut.TryGetDeviceByName("dns-device", out var device);
+        Assert.True(found);
+        Assert.NotNull(device);
+        // Should store resolved IP, not the DNS name
+        Assert.True(IPAddress.TryParse(device.IpAddress, out _), "IpAddress should be a resolved IP, not a DNS name");
+        Assert.Equal("127.0.0.1", device.IpAddress);
+    }
+
+    [Fact]
+    public void Constructor_CommunityString_PassedThroughToDeviceInfo()
+    {
+        var opts = new DevicesOptions
+        {
+            Devices =
+            [
+                new DeviceOptions
+                {
+                    Name = "community-device",
+                    IpAddress = "10.0.10.5",
+                    CommunityString = "my-custom-community",
+                    MetricPolls = []
+                }
+            ]
+        };
+
+        var sut = CreateRegistry(opts);
+
+        var found = sut.TryGetDeviceByName("community-device", out var device);
+        Assert.True(found);
+        Assert.Equal("my-custom-community", device!.CommunityString);
+    }
+
+    [Fact]
+    public void Constructor_NoCommunityString_DeviceInfoHasNull()
+    {
+        var sut = CreateRegistry();
+
+        var found = sut.TryGetDeviceByName("npb-core-01", out var device);
+        Assert.True(found);
+        Assert.Null(device!.CommunityString);
+    }
+
+    [Fact]
     public void JobKey_ProducesCorrectIdentity()
     {
         var pollInfo = new MetricPollInfo(

@@ -31,6 +31,13 @@ if (Directory.Exists(configDir))
     {
         builder.Configuration.AddJsonFile(file, optional: true, reloadOnChange: true);
     }
+
+    // Load device definitions if present (separate from OID maps for clarity)
+    var devicesConfig = Path.Combine(configDir, "devices.json");
+    if (File.Exists(devicesConfig))
+    {
+        builder.Configuration.AddJsonFile(devicesConfig, optional: true, reloadOnChange: true);
+    }
 }
 
 // DI registration order:

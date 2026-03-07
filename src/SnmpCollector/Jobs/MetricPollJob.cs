@@ -80,7 +80,10 @@ public sealed class MetricPollJob : IJob
             .ToList();
 
         var endpoint = new IPEndPoint(IPAddress.Parse(device.IpAddress), device.Port);
-        var community = new OctetString(CommunityStringHelper.DeriveFromDeviceName(device.Name));
+        var communityStr = !string.IsNullOrEmpty(device.CommunityString)
+            ? device.CommunityString
+            : CommunityStringHelper.DeriveFromDeviceName(device.Name);
+        var community = new OctetString(communityStr);
 
         try
         {
