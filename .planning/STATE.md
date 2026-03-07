@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-03-07)
 
 ## Current Position
 
-Phase: 12 of 14 (NPB OID Population)
-Plan: 1 of 1
-Status: Phase complete
-Last activity: 2026-03-07 — Completed 12-01-PLAN.md (Phase 12 complete)
+Phase: 13 of 14 (Simulator Refinement)
+Plan: 0 of TBD
+Status: Not started
+Last activity: 2026-03-07 — Completed Phase 12 (NPB OID Population)
 
 Progress: [###########.........] 48/48 v1.0 complete, 4/9 v1.1 plans
 

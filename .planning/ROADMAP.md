@@ -19,7 +19,7 @@
 **Milestone Goal:** Populate OID maps for OBP and NPB devices with documentation, refine simulators to match realistic device profiles, and deploy integrated K8s simulation environment for end-to-end verification.
 
 - [x] **Phase 11: OID Map Design and OBP Population** - Establish naming convention, decide map structure, populate OBP OIDs with docs
-- [ ] **Phase 12: NPB OID Population** - Populate NPB OIDs with documentation using established conventions
+- [x] **Phase 12: NPB OID Population** - Populate NPB OIDs with documentation using established conventions
 - [ ] **Phase 13: Simulator Refinement** - Update both simulators for realistic OID subsets and trap behavior
 - [ ] **Phase 14: K8s Integration and E2E** - Deploy simulator pods, update ConfigMap, verify end-to-end pipeline
 
@@ -81,6 +81,6 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 1-10 | v1.0 | 48/48 | Complete | 2026-03-07 |
 | 11. OID Map Design and OBP Population | v1.1 | 3/3 | Complete | 2026-03-07 |
-| 12. NPB OID Population | v1.1 | 0/1 | Not started | - |
+| 12. NPB OID Population | v1.1 | 1/1 | Complete | 2026-03-07 |
 | 13. Simulator Refinement | v1.1 | 0/TBD | Not started | - |
 | 14. K8s Integration and E2E | v1.1 | 0/TBD | Not started | - |
