@@ -30,10 +30,24 @@ public sealed class OtelMetricHandler : IRequestHandler<SnmpOidReceived, Unit>
         _logger = logger;
     }
 
+    /// <summary>
+    /// Device name used by HeartbeatJob's loopback trap. Internal infrastructure traffic —
+    /// pipeline metrics count it but no business metric (snmp_gauge/snmp_info) is recorded.
+    /// </summary>
+    internal const string HeartbeatDeviceName = "heartbeat";
+
     public Task<Unit> Handle(SnmpOidReceived notification, CancellationToken cancellationToken)
     {
-        var metricName = notification.MetricName ?? OidMapService.Unknown;
         var deviceName = notification.DeviceName ?? "unknown";
+
+        // Internal heartbeat: count as handled for pipeline liveness evidence, skip metric export.
+        if (string.Equals(deviceName, HeartbeatDeviceName, StringComparison.OrdinalIgnoreCase))
+        {
+            _pipelineMetrics.IncrementHandled();
+            return Task.FromResult(Unit.Value);
+        }
+
+        var metricName = notification.MetricName ?? OidMapService.Unknown;
         var ip = notification.AgentIp.ToString();
         var source = notification.Source.ToString().ToLowerInvariant();
 

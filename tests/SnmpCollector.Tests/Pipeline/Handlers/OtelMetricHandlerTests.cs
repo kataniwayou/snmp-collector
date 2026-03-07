@@ -194,6 +194,23 @@ public sealed class OtelMetricHandlerTests : IDisposable
         Assert.True(captured.EndsWith("..."), $"Expected value to end with '...', got: '{captured}'");
     }
 
+    // --- Heartbeat suppression test ---
+
+    [Fact]
+    public async Task Heartbeat_SkipsMetricRecording_ButIncrementsHandled()
+    {
+        var notification = MakeNotification(
+            new Integer32(1),
+            SnmpType.Integer32,
+            deviceName: OtelMetricHandler.HeartbeatDeviceName);
+
+        var exception = await Record.ExceptionAsync(() => _handler.Handle(notification, CancellationToken.None));
+
+        Assert.Null(exception);
+        Assert.Empty(_testFactory.GaugeRecords);
+        Assert.Empty(_testFactory.InfoRecords);
+    }
+
     // --- Pipeline metric counter test ---
 
     [Fact]
