@@ -98,15 +98,15 @@ Plans:
   1. Single ConfigMap key contains all device entries with JSONC documentation comments
   2. Separate oidmap-*.json and devices.json files are removed -- single source of truth
   3. K8s API watch detects ConfigMap changes and reloads device config + poll definitions at runtime
-  4. Adding/removing devices or changing poll OIDs/intervals takes effect without pod restart (Quartz jobs re-registered, PollDefinitionRegistry reloaded)
+  4. Adding/removing devices or changing poll OIDs/intervals takes effect without pod restart (Quartz jobs re-registered)
   5. RBAC updated with configmaps read/watch permission
   6. Local development fallback works without K8s (file-based loading when not in cluster)
 **Plans**: 4 plans
 Plans:
-- [ ] 15-01-PLAN.md -- Unified config model (SimetraConfigModel, JsoncParser), mutable DeviceRegistry + PollDefinitionRegistry, registry cleanup methods, local dev JSONC file
-- [ ] 15-02-PLAN.md -- ConfigMapWatcherService (K8s API watch with reconnect, reloads DeviceRegistry + PollDefinitionRegistry + DynamicPollScheduler) and DynamicPollScheduler (Quartz job reconciliation)
-- [ ] 15-03-PLAN.md -- DI wiring (ServiceCollectionExtensions + Program.cs), local dev config loading
-- [ ] 15-04-PLAN.md -- K8s RBAC and ConfigMap manifest updates, cleanup of legacy oidmap/devices keys
+- [ ] 15-01-PLAN.md -- Unified config model (SimetraConfigModel), mutable OidMapService + DeviceRegistry, registry cleanup methods, updated tests
+- [ ] 15-02-PLAN.md -- ConfigMapWatcherService (K8s API watch with reconnect) and DynamicPollScheduler (Quartz job reconciliation)
+- [ ] 15-03-PLAN.md -- DI wiring (ServiceCollectionExtensions + Program.cs), local dev config file, cleanup of legacy file scanning
+- [ ] 15-04-PLAN.md -- K8s RBAC and ConfigMap manifest updates, unified simetra-config.json key
 
 ## Progress
 
