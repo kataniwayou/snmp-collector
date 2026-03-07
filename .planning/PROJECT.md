@@ -30,7 +30,12 @@ See `.planning/milestones/v1.0-REQUIREMENTS.md` for full requirement details.
 
 ### Active
 
-(None yet — define with `/gsd:new-milestone`)
+**v1.1 Device Simulation (in progress)**
+
+- OID map structure and naming conventions for NPB + OBP device families
+- Poll OID documentation (values, ranges, units, expected behavior)
+- Simulator refinement — selective trap/poll behavior matching real device profiles
+- K8s simulator pod deployment integrated with snmp-collector
 
 ### Out of Scope
 
@@ -86,4 +91,4 @@ See `.planning/milestones/v1.0-REQUIREMENTS.md` for full requirement details.
 | IRequest<Unit> over INotification | MediatR behaviors only fire for IRequest; INotification bypasses pipeline entirely | Good |
 
 ---
-*Last updated: 2026-03-07 after v1.0 milestone*
+*Last updated: 2026-03-07 after v1.1 milestone start*

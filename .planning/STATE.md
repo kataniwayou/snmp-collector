@@ -5,13 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Core value:** Every SNMP OID — from a trap or a poll — gets resolved, typed correctly, and pushed to Prometheus where it's queryable in Grafana within seconds.
-**Current focus:** v1.0 milestone complete. Planning next milestone.
+**Current focus:** v1.1 Device Simulation — OID map structure, simulator refinement, device documentation.
 
 ## Current Position
 
-Phase: v1.0 complete (10 phases, 48 plans, 16 quick tasks)
-Status: Between milestones
-Last activity: 2026-03-07 — v1.0 milestone archived
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-07 — Milestone v1.1 started
 
 ## Milestone History
 
