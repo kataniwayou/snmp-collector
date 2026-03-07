@@ -229,9 +229,12 @@ public static class ServiceCollectionExtensions
             services.AddSingleton<ILeaderElection>(sp => sp.GetRequiredService<K8sLeaseElection>());
             services.AddHostedService(sp => sp.GetRequiredService<K8sLeaseElection>());
 
-            // Phase 15: ConfigMap watcher for live reload of OID maps + device config
-            services.AddSingleton<ConfigMapWatcherService>();
-            services.AddHostedService(sp => sp.GetRequiredService<ConfigMapWatcherService>());
+            // Phase 15: Independent ConfigMap watchers for OID maps and device config
+            services.AddSingleton<OidMapWatcherService>();
+            services.AddHostedService(sp => sp.GetRequiredService<OidMapWatcherService>());
+
+            services.AddSingleton<DeviceWatcherService>();
+            services.AddHostedService(sp => sp.GetRequiredService<DeviceWatcherService>());
         }
         else
         {
@@ -280,18 +283,18 @@ public static class ServiceCollectionExtensions
 
         // --- Phase 2 pipeline singletons ---
         // DeviceRegistry depends on IOptions<DevicesOptions> for initial startup construction.
-        // In K8s mode, ConfigMapWatcherService calls ReloadAsync to overwrite with ConfigMap data.
-        // In local dev mode, Program.cs calls ReloadAsync after build with simetra-config.json data.
+        // In K8s mode, DeviceWatcherService calls ReloadAsync to overwrite with ConfigMap data.
+        // In local dev mode, Program.cs calls ReloadAsync after build with devices.json data.
         services.AddSingleton<IDeviceRegistry, DeviceRegistry>();
 
-        // OidMapService: initial empty map. In K8s mode, ConfigMapWatcherService populates it.
-        // In local dev mode, populated after DI build from simetra-config.json.
+        // OidMapService: initial empty map. In K8s mode, OidMapWatcherService populates it.
+        // In local dev mode, populated after DI build from oidmaps.json.
         services.AddSingleton<OidMapService>(sp =>
             new OidMapService(new Dictionary<string, string>(), sp.GetRequiredService<ILogger<OidMapService>>()));
         services.AddSingleton<IOidMapService>(sp => sp.GetRequiredService<OidMapService>());
 
         // Phase 15: DynamicPollScheduler available in both K8s and local dev modes.
-        // K8s: called by ConfigMapWatcherService. Local dev: called by Program.cs after build.
+        // K8s: called by DeviceWatcherService. Local dev: called by Program.cs after build.
         services.AddSingleton<DynamicPollScheduler>();
 
         // --- Phase 2: Cardinality audit (runs during StartingAsync, before Quartz starts) ---

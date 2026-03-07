@@ -20,7 +20,7 @@ var configDir = Environment.GetEnvironmentVariable("CONFIG_DIRECTORY")
 if (Directory.Exists(configDir))
 {
     // Load K8s appsettings override if present (replaces old subPath mount).
-    // reloadOnChange: false -- Phase 15 ConfigMapWatcherService handles live reload via K8s API.
+    // reloadOnChange: false -- OidMapWatcherService/DeviceWatcherService handle live reload via K8s API.
     var k8sConfig = Path.Combine(configDir, "appsettings.k8s.json");
     if (File.Exists(k8sConfig))
     {
@@ -48,36 +48,49 @@ var app = builder.Build();
 var correlationService = app.Services.GetRequiredService<ICorrelationService>();
 correlationService.SetCorrelationId(Guid.NewGuid().ToString("N"));
 
-// Phase 15: Local dev -- load unified config from file when not in K8s.
-// In K8s mode, ConfigMapWatcherService handles config loading via API watch.
+// Local dev -- load OID map and devices from separate files when not in K8s.
+// In K8s mode, OidMapWatcherService and DeviceWatcherService handle config
+// loading via API watch on their respective ConfigMaps.
 // ReconcileAsync is called here for consistency with K8s mode, where
-// ConfigMapWatcherService calls it after ReloadAsync. PollSchedulerStartupService
+// DeviceWatcherService calls it after ReloadAsync. PollSchedulerStartupService
 // also schedules initial jobs, but ReconcileAsync is idempotent -- it will detect
 // that the desired jobs already exist and make no changes.
 if (!k8s.KubernetesClientConfiguration.IsInCluster())
 {
-    var simetraConfigPath = Path.Combine(configDir, "simetra-config.json");
-    if (File.Exists(simetraConfigPath))
+    var jsonOptions = new System.Text.Json.JsonSerializerOptions
     {
-        var json = File.ReadAllText(simetraConfigPath);
-        var jsonOptions = new System.Text.Json.JsonSerializerOptions
-        {
-            ReadCommentHandling = System.Text.Json.JsonCommentHandling.Skip,
-            AllowTrailingCommas = true,
-            PropertyNameCaseInsensitive = true
-        };
-        var config = System.Text.Json.JsonSerializer.Deserialize<SnmpCollector.Configuration.SimetraConfigModel>(json, jsonOptions);
-        if (config != null)
+        ReadCommentHandling = System.Text.Json.JsonCommentHandling.Skip,
+        AllowTrailingCommas = true,
+        PropertyNameCaseInsensitive = true
+    };
+
+    // Load OID map from oidmaps.json (bare dictionary)
+    var oidmapsPath = Path.Combine(configDir, "oidmaps.json");
+    if (File.Exists(oidmapsPath))
+    {
+        var oidJson = File.ReadAllText(oidmapsPath);
+        var oidMap = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(oidJson, jsonOptions);
+        if (oidMap != null)
         {
             var oidMapService = app.Services.GetRequiredService<SnmpCollector.Pipeline.OidMapService>();
-            oidMapService.UpdateMap(config.OidMap);
+            oidMapService.UpdateMap(oidMap);
+        }
+    }
 
+    // Load devices from devices.json (bare array)
+    var devicesPath = Path.Combine(configDir, "devices.json");
+    if (File.Exists(devicesPath))
+    {
+        var devicesJson = File.ReadAllText(devicesPath);
+        var devices = System.Text.Json.JsonSerializer.Deserialize<List<SnmpCollector.Configuration.DeviceOptions>>(devicesJson, jsonOptions);
+        if (devices != null)
+        {
             var deviceRegistry = app.Services.GetRequiredService<SnmpCollector.Pipeline.IDeviceRegistry>();
-            await deviceRegistry.ReloadAsync(config.Devices);
+            await deviceRegistry.ReloadAsync(devices);
 
             // Reconcile poll jobs to match the loaded device config
             var pollScheduler = app.Services.GetRequiredService<SnmpCollector.Services.DynamicPollScheduler>();
-            await pollScheduler.ReconcileAsync(config.Devices, CancellationToken.None);
+            await pollScheduler.ReconcileAsync(devices, CancellationToken.None);
         }
     }
 }

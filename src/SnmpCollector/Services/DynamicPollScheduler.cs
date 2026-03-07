@@ -13,7 +13,7 @@ namespace SnmpCollector.Services;
 /// state from <see cref="DeviceOptions"/>, then adds new jobs, removes deleted ones,
 /// and reschedules those whose interval changed.
 /// <para>
-/// Called by <see cref="ConfigMapWatcherService"/> after <c>DeviceRegistry.ReloadAsync</c>
+/// Called by <see cref="DeviceWatcherService"/> after <c>DeviceRegistry.ReloadAsync</c>
 /// completes. Thread safety is handled by the caller's <see cref="SemaphoreSlim"/> gate.
 /// </para>
 /// </summary>

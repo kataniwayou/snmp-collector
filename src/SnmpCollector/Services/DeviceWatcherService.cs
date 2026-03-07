@@ -9,29 +9,30 @@ using SnmpCollector.Pipeline;
 namespace SnmpCollector.Services;
 
 /// <summary>
-/// Background service that watches the <c>simetra-config</c> ConfigMap via the Kubernetes
-/// API and triggers a full reload of OID map, device registry, and Quartz poll jobs on change.
+/// Background service that watches the <c>simetra-devices</c> ConfigMap via the Kubernetes
+/// API and triggers a device registry reload and poll job reconciliation on change.
+/// Only updates DeviceRegistry and DynamicPollScheduler -- does not touch OidMapService.
 /// <para>
 /// Uses the K8s watch API which sends events as the ConfigMap changes. The watch connection
 /// times out after ~30 minutes (K8s server-side default), so the service reconnects
-/// automatically in a loop -- matching the <see cref="Telemetry.K8sLeaseElection"/> pattern.
+/// automatically in a loop.
 /// </para>
 /// <para>
 /// Concurrent reload requests are serialized via <see cref="SemaphoreSlim"/> to prevent
 /// race conditions when rapid successive changes arrive.
 /// </para>
 /// </summary>
-public sealed class ConfigMapWatcherService : BackgroundService
+public sealed class DeviceWatcherService : BackgroundService
 {
     /// <summary>
-    /// ConfigMap name containing the unified simetra configuration.
+    /// ConfigMap name containing device definitions.
     /// </summary>
-    internal const string ConfigMapName = "simetra-config";
+    internal const string ConfigMapName = "simetra-devices";
 
     /// <summary>
-    /// Key within the ConfigMap data that holds the JSONC configuration document.
+    /// Key within the ConfigMap data that holds the devices JSON array.
     /// </summary>
-    internal const string ConfigKey = "simetra-config.json";
+    internal const string ConfigKey = "devices.json";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -41,22 +42,19 @@ public sealed class ConfigMapWatcherService : BackgroundService
     };
 
     private readonly IKubernetes _kubeClient;
-    private readonly IOidMapService _oidMapService;
     private readonly IDeviceRegistry _deviceRegistry;
     private readonly DynamicPollScheduler _pollScheduler;
-    private readonly ILogger<ConfigMapWatcherService> _logger;
+    private readonly ILogger<DeviceWatcherService> _logger;
     private readonly SemaphoreSlim _reloadLock = new(1, 1);
     private readonly string _namespace;
 
-    public ConfigMapWatcherService(
+    public DeviceWatcherService(
         IKubernetes kubeClient,
-        IOidMapService oidMapService,
         IDeviceRegistry deviceRegistry,
         DynamicPollScheduler pollScheduler,
-        ILogger<ConfigMapWatcherService> logger)
+        ILogger<DeviceWatcherService> logger)
     {
         _kubeClient = kubeClient ?? throw new ArgumentNullException(nameof(kubeClient));
-        _oidMapService = oidMapService ?? throw new ArgumentNullException(nameof(oidMapService));
         _deviceRegistry = deviceRegistry ?? throw new ArgumentNullException(nameof(deviceRegistry));
         _pollScheduler = pollScheduler ?? throw new ArgumentNullException(nameof(pollScheduler));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -72,13 +70,13 @@ public sealed class ConfigMapWatcherService : BackgroundService
         {
             await LoadFromConfigMapAsync(stoppingToken).ConfigureAwait(false);
             _logger.LogInformation(
-                "ConfigMapWatcher initial load complete for {ConfigMap}/{Key} in namespace {Namespace}",
+                "DeviceWatcher initial load complete for {ConfigMap}/{Key} in namespace {Namespace}",
                 ConfigMapName, ConfigKey, _namespace);
         }
         catch (Exception ex) when (!stoppingToken.IsCancellationRequested)
         {
             _logger.LogError(ex,
-                "ConfigMapWatcher initial load failed for {ConfigMap}/{Key} -- will retry via watch loop",
+                "DeviceWatcher initial load failed for {ConfigMap}/{Key} -- will retry via watch loop",
                 ConfigMapName, ConfigKey);
         }
 
@@ -88,7 +86,7 @@ public sealed class ConfigMapWatcherService : BackgroundService
             try
             {
                 _logger.LogDebug(
-                    "ConfigMapWatcher starting watch on {ConfigMap} in namespace {Namespace}",
+                    "DeviceWatcher starting watch on {ConfigMap} in namespace {Namespace}",
                     ConfigMapName, _namespace);
 
                 var response = _kubeClient.CoreV1.ListNamespacedConfigMapWithHttpMessagesAsync(
@@ -103,7 +101,7 @@ public sealed class ConfigMapWatcherService : BackgroundService
                     if (eventType is WatchEventType.Added or WatchEventType.Modified)
                     {
                         _logger.LogInformation(
-                            "ConfigMapWatcher received {EventType} event for {ConfigMap}",
+                            "DeviceWatcher received {EventType} event for {ConfigMap}",
                             eventType, ConfigMapName);
 
                         await HandleConfigMapChangedAsync(configMap, stoppingToken).ConfigureAwait(false);
@@ -111,13 +109,13 @@ public sealed class ConfigMapWatcherService : BackgroundService
                     else if (eventType is WatchEventType.Deleted)
                     {
                         _logger.LogWarning(
-                            "ConfigMap {ConfigMap} was deleted -- skipping reload, retaining current config",
+                            "ConfigMap {ConfigMap} was deleted -- skipping reload, retaining current devices",
                             ConfigMapName);
                     }
                 }
 
                 // Watch ended normally (server closed the connection after ~30 min)
-                _logger.LogDebug("ConfigMapWatcher watch connection closed, reconnecting");
+                _logger.LogDebug("DeviceWatcher watch connection closed, reconnecting");
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -127,7 +125,7 @@ public sealed class ConfigMapWatcherService : BackgroundService
             catch (Exception ex)
             {
                 _logger.LogWarning(ex,
-                    "ConfigMapWatcher watch disconnected unexpectedly, reconnecting in 5s");
+                    "DeviceWatcher watch disconnected unexpectedly, reconnecting in 5s");
 
                 try
                 {
@@ -140,7 +138,7 @@ public sealed class ConfigMapWatcherService : BackgroundService
             }
         }
 
-        _logger.LogInformation("ConfigMapWatcher stopped");
+        _logger.LogInformation("DeviceWatcher stopped");
     }
 
     /// <summary>
@@ -156,8 +154,8 @@ public sealed class ConfigMapWatcherService : BackgroundService
     }
 
     /// <summary>
-    /// Parses the JSONC config key from the ConfigMap and applies the new configuration
-    /// to all downstream services.
+    /// Parses the devices JSON array from the ConfigMap and applies the new device list
+    /// to <see cref="IDeviceRegistry"/> and <see cref="DynamicPollScheduler"/>.
     /// </summary>
     private async Task HandleConfigMapChangedAsync(V1ConfigMap configMap, CancellationToken ct)
     {
@@ -169,10 +167,10 @@ public sealed class ConfigMapWatcherService : BackgroundService
             return;
         }
 
-        SimetraConfigModel? config;
+        List<DeviceOptions>? devices;
         try
         {
-            config = JsonSerializer.Deserialize<SimetraConfigModel>(jsonContent, JsonOptions);
+            devices = JsonSerializer.Deserialize<List<DeviceOptions>>(jsonContent, JsonOptions);
         }
         catch (JsonException ex)
         {
@@ -182,7 +180,7 @@ public sealed class ConfigMapWatcherService : BackgroundService
             return;
         }
 
-        if (config is null)
+        if (devices is null)
         {
             _logger.LogWarning(
                 "Deserialized {ConfigKey} is null -- skipping reload",
@@ -190,35 +188,22 @@ public sealed class ConfigMapWatcherService : BackgroundService
             return;
         }
 
-        await ApplyConfigAsync(config, ct).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// Applies the parsed configuration to OidMapService, DeviceRegistry, and DynamicPollScheduler.
-    /// Serialized via <see cref="_reloadLock"/> to prevent concurrent reloads from racing.
-    /// </summary>
-    private async Task ApplyConfigAsync(SimetraConfigModel config, CancellationToken ct)
-    {
         await _reloadLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            // 1. Update OID map (synchronous atomic swap)
-            _oidMapService.UpdateMap(config.OidMap);
+            // 1. Reload device registry (async DNS resolution)
+            await _deviceRegistry.ReloadAsync(devices).ConfigureAwait(false);
 
-            // 2. Reload device registry (async DNS resolution)
-            await _deviceRegistry.ReloadAsync(config.Devices).ConfigureAwait(false);
-
-            // 3. Reconcile Quartz poll jobs to match new device config
-            await _pollScheduler.ReconcileAsync(config.Devices, ct).ConfigureAwait(false);
+            // 2. Reconcile Quartz poll jobs to match new device config
+            await _pollScheduler.ReconcileAsync(devices, ct).ConfigureAwait(false);
 
             _logger.LogInformation(
-                "Configuration reload complete: {OidCount} OID entries, {DeviceCount} devices",
-                config.OidMap.Count,
-                config.Devices.Count);
+                "Device reload complete: {DeviceCount} devices",
+                devices.Count);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Configuration reload failed -- previous config remains active");
+            _logger.LogError(ex, "Device reload failed -- previous config remains active");
         }
         finally
         {
