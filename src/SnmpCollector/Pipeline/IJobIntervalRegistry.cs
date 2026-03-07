@@ -23,4 +23,12 @@ public interface IJobIntervalRegistry
     /// <param name="intervalSeconds">The interval in seconds, if found.</param>
     /// <returns><c>true</c> if the job key was found; otherwise <c>false</c>.</returns>
     bool TryGetInterval(string jobKey, out int intervalSeconds);
+
+    /// <summary>
+    /// Removes a job key from the registry. Called during config reload when
+    /// a device or poll group is removed and its Quartz job is unscheduled.
+    /// No-op if the key does not exist.
+    /// </summary>
+    /// <param name="jobKey">The unique job key to remove.</param>
+    void Unregister(string jobKey);
 }

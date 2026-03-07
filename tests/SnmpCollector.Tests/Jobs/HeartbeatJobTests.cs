@@ -181,6 +181,8 @@ public sealed class HeartbeatJobTests
 
         public IReadOnlyDictionary<string, DateTimeOffset> GetAllStamps()
             => new Dictionary<string, DateTimeOffset>().AsReadOnly();
+
+        public void Remove(string jobKey) { }
     }
 
     /// <summary>

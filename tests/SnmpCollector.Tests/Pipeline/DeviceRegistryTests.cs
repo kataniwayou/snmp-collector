@@ -1,4 +1,5 @@
 using System.Net;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using SnmpCollector.Configuration;
 using SnmpCollector.Pipeline;
@@ -42,7 +43,8 @@ public sealed class DeviceRegistryTests
     private static DeviceRegistry CreateRegistry(DevicesOptions? devicesOptions = null)
     {
         return new DeviceRegistry(
-            Options.Create(devicesOptions ?? TwoDeviceOptions()));
+            Options.Create(devicesOptions ?? TwoDeviceOptions()),
+            NullLogger<DeviceRegistry>.Instance);
     }
 
     [Fact]
@@ -196,5 +198,50 @@ public sealed class DeviceRegistryTests
         var key = pollInfo.JobKey("npb-core-01");
 
         Assert.Equal("metric-poll-npb-core-01-0", key);
+    }
+
+    [Fact]
+    public async Task ReloadAsync_AddsNewDevice_FoundByName()
+    {
+        var sut = CreateRegistry();
+
+        // Reload with the original two plus a new device
+        var newDevices = new List<DeviceOptions>
+        {
+            new() { Name = "npb-core-01", IpAddress = "10.0.10.1", MetricPolls = [] },
+            new() { Name = "obp-edge-01", IpAddress = "10.0.10.2", MetricPolls = [] },
+            new() { Name = "new-device", IpAddress = "10.0.10.3", MetricPolls = [] }
+        };
+
+        var (added, removed) = await sut.ReloadAsync(newDevices);
+
+        Assert.Contains("new-device", added);
+        Assert.Empty(removed);
+        Assert.Equal(3, sut.AllDevices.Count);
+
+        var found = sut.TryGetDeviceByName("new-device", out var device);
+        Assert.True(found);
+        Assert.Equal("new-device", device!.Name);
+    }
+
+    [Fact]
+    public async Task ReloadAsync_RemovesDevice_NotFoundByName()
+    {
+        var sut = CreateRegistry();
+
+        // Reload with only one of the original two devices
+        var newDevices = new List<DeviceOptions>
+        {
+            new() { Name = "npb-core-01", IpAddress = "10.0.10.1", MetricPolls = [] }
+        };
+
+        var (added, removed) = await sut.ReloadAsync(newDevices);
+
+        Assert.Empty(added);
+        Assert.Contains("obp-edge-01", removed);
+        Assert.Equal(1, sut.AllDevices.Count);
+
+        var found = sut.TryGetDeviceByName("obp-edge-01", out _);
+        Assert.False(found);
     }
 }

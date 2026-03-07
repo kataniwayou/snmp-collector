@@ -150,5 +150,7 @@ public sealed class LivenessHealthCheckTests
 
         public IReadOnlyDictionary<string, DateTimeOffset> GetAllStamps()
             => _stamps.AsReadOnly();
+
+        public void Remove(string jobKey) => _stamps.Remove(jobKey);
     }
 }

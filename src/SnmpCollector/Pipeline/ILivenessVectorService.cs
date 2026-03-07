@@ -32,4 +32,12 @@ public interface ILivenessVectorService
     /// </summary>
     /// <returns>A read-only dictionary mapping job keys to their last completion timestamps.</returns>
     IReadOnlyDictionary<string, DateTimeOffset> GetAllStamps();
+
+    /// <summary>
+    /// Removes the liveness stamp for a job key. Called during config reload when
+    /// a device or poll group is removed and its Quartz job is unscheduled.
+    /// No-op if the key does not exist.
+    /// </summary>
+    /// <param name="jobKey">The unique job key to remove.</param>
+    void Remove(string jobKey);
 }

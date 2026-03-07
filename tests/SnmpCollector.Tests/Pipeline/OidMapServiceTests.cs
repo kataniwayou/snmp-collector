@@ -1,7 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
-using SnmpCollector.Configuration;
 using SnmpCollector.Pipeline;
-using SnmpCollector.Tests.Helpers;
 using Xunit;
 
 namespace SnmpCollector.Tests.Pipeline;
@@ -10,9 +8,7 @@ public sealed class OidMapServiceTests
 {
     private static OidMapService CreateService(Dictionary<string, string> entries)
     {
-        var options = new OidMapOptions { Entries = entries };
-        var monitor = new TestOptionsMonitor<OidMapOptions>(options);
-        return new OidMapService(monitor, NullLogger<OidMapService>.Instance);
+        return new OidMapService(entries, NullLogger<OidMapService>.Instance);
     }
 
     [Fact]
@@ -72,17 +68,15 @@ public sealed class OidMapServiceTests
         {
             ["1.3.6.1.2.1.1.1.0"] = "sysDescr"
         };
-        var options = new OidMapOptions { Entries = initialEntries };
-        var monitor = new TestOptionsMonitor<OidMapOptions>(options);
-        var sut = new OidMapService(monitor, NullLogger<OidMapService>.Instance);
+        var sut = CreateService(initialEntries);
 
-        // Simulate hot-reload adding a new entry
+        // Simulate hot-reload adding a new entry via UpdateMap
         var updatedEntries = new Dictionary<string, string>
         {
             ["1.3.6.1.2.1.1.1.0"] = "sysDescr",
             ["1.3.6.1.2.1.25.3.3.1.2"] = "hrProcessorLoad"
         };
-        monitor.Change(new OidMapOptions { Entries = updatedEntries });
+        sut.UpdateMap(updatedEntries);
 
         var result = sut.Resolve("1.3.6.1.2.1.25.3.3.1.2");
 
@@ -97,16 +91,14 @@ public sealed class OidMapServiceTests
             ["1.3.6.1.2.1.1.1.0"] = "sysDescr",
             ["1.3.6.1.2.1.25.3.3.1.2"] = "hrProcessorLoad"
         };
-        var options = new OidMapOptions { Entries = initialEntries };
-        var monitor = new TestOptionsMonitor<OidMapOptions>(options);
-        var sut = new OidMapService(monitor, NullLogger<OidMapService>.Instance);
+        var sut = CreateService(initialEntries);
 
-        // Simulate hot-reload removing an entry
+        // Simulate hot-reload removing an entry via UpdateMap
         var updatedEntries = new Dictionary<string, string>
         {
             ["1.3.6.1.2.1.1.1.0"] = "sysDescr"
         };
-        monitor.Change(new OidMapOptions { Entries = updatedEntries });
+        sut.UpdateMap(updatedEntries);
 
         var result = sut.Resolve("1.3.6.1.2.1.25.3.3.1.2");
 

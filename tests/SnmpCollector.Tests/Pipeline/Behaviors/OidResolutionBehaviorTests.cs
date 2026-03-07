@@ -101,5 +101,7 @@ public sealed class OidResolutionBehaviorTests
                 : OidMapService.Unknown;
 
         public int EntryCount => _knownOid is not null ? 1 : 0;
+
+        public void UpdateMap(Dictionary<string, string> entries) { }
     }
 }

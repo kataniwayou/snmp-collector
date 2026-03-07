@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Quartz;
 using Quartz.Impl;
+using SnmpCollector.Configuration;
 using SnmpCollector.Jobs;
 using SnmpCollector.Pipeline;
 using SnmpCollector.Telemetry;
@@ -387,6 +388,10 @@ public sealed class MetricPollJobTests : IDisposable
                 string.Equals(d.Name, deviceName, StringComparison.OrdinalIgnoreCase));
             return device is not null;
         }
+
+        public Task<(IReadOnlySet<string> Added, IReadOnlySet<string> Removed)> ReloadAsync(List<DeviceOptions> devices)
+            => Task.FromResult<(IReadOnlySet<string>, IReadOnlySet<string>)>(
+                (new HashSet<string>(), new HashSet<string>()));
     }
 
     /// <summary>

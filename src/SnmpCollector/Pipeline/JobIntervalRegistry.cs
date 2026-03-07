@@ -19,4 +19,10 @@ public sealed class JobIntervalRegistry : IJobIntervalRegistry
     {
         return _intervals.TryGetValue(jobKey, out intervalSeconds);
     }
+
+    /// <inheritdoc />
+    public void Unregister(string jobKey)
+    {
+        _intervals.Remove(jobKey);
+    }
 }

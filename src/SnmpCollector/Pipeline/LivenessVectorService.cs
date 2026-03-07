@@ -27,4 +27,10 @@ public sealed class LivenessVectorService : ILivenessVectorService
     {
         return _stamps.ToDictionary(kv => kv.Key, kv => kv.Value).AsReadOnly();
     }
+
+    /// <inheritdoc />
+    public void Remove(string jobKey)
+    {
+        _stamps.TryRemove(jobKey, out _);
+    }
 }
