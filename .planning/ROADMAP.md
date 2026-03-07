@@ -45,7 +45,9 @@
   1. NPB OID map contains entries for 8 ports covering system health, per-port traffic counters, and port status with realistic OID strings
   2. Each NPB OID has documentation specifying value meaning, units, and expected ranges
   3. NPB entries follow the same naming convention as OBP (e.g., `npb_port_rx_octets_P1`, `npb_port_status_P8`)
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 12-01-PLAN.md -- Create oidmap-npb.json with 68 documented entries and update K8s ConfigMaps
 
 ### Phase 13: Simulator Refinement
 **Goal**: Both OBP and NPB simulators respond with realistic OID subsets matching the populated OID maps and send appropriate trap types
@@ -79,6 +81,6 @@
 |-------|-----------|----------------|--------|-----------|
 | 1-10 | v1.0 | 48/48 | Complete | 2026-03-07 |
 | 11. OID Map Design and OBP Population | v1.1 | 3/3 | Complete | 2026-03-07 |
-| 12. NPB OID Population | v1.1 | 0/TBD | Not started | - |
+| 12. NPB OID Population | v1.1 | 0/1 | Not started | - |
 | 13. Simulator Refinement | v1.1 | 0/TBD | Not started | - |
 | 14. K8s Integration and E2E | v1.1 | 0/TBD | Not started | - |
