@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-03-07)
 ## Current Position
 
 Phase: 15 (K8s ConfigMap Watch and Unified Config)
-Plan: 1 of 5
+Plan: 2 of 5
 Status: In progress
-Last activity: 2026-03-07 — Completed 15-01-PLAN.md (mutable registries + unified config model)
+Last activity: 2026-03-07 — Completed 15-02-PLAN.md (ConfigMap watcher + dynamic poll scheduler)
 
-Progress: [####________________] 1/5 Phase 15 plans
+Progress: [########____________] 2/5 Phase 15 plans
 
 ## Milestone History
 
@@ -45,6 +45,9 @@ See `.planning/milestones/` for archived roadmaps and requirements.
 - SimetraConfigModel POCO unifies OidMap + Devices in single JSON document
 - DeviceOptions.CommunityString optional override; null falls back to Simetra.{Name} convention
 - devices.json auto-loaded from CONFIG_DIRECTORY alongside oidmap-*.json files
+- DynamicPollScheduler.ReconcileAsync diffs Quartz metric-poll-* jobs and adds/removes/reschedules
+- ConfigMapWatcherService watches simetra-config ConfigMap via K8s API with auto-reconnect
+- ConfigMap reload serialized via SemaphoreSlim; orchestrates OidMap + DeviceRegistry + PollScheduler
 
 ### Known Tech Debt
 
@@ -58,5 +61,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-07
-Stopped at: Completed 15-01-PLAN.md
+Stopped at: Completed 15-02-PLAN.md
 Resume file: None
