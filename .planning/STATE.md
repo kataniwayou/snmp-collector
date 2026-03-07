@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-03-07)
 ## Current Position
 
 Phase: 15 (K8s ConfigMap Watch and Unified Config)
-Plan: 0 of TBD
-Status: Not started
-Last activity: 2026-03-07 — Phase 15 added to roadmap (K8s API watch + unified config)
+Plan: 1 of 5
+Status: In progress
+Last activity: 2026-03-07 — Completed 15-01-PLAN.md (mutable registries + unified config model)
 
-Progress: [####################] 48/48 v1.0 complete, 9/9 v1.1 plans
+Progress: [####________________] 1/5 Phase 15 plans
 
 ## Milestone History
 
@@ -39,6 +39,10 @@ See `.planning/milestones/` for archived roadmaps and requirements.
 - Config auto-scan: CONFIG_DIRECTORY env var with ContentRootPath/config fallback
 - K8s directory mount at /app/config (no subPath) enables ConfigMap hot-reload
 - DeviceRegistry resolves K8s Service DNS names at startup via Dns.GetHostAddresses fallback
+- OidMapService decoupled from IOptionsMonitor; accepts Dictionary + supports UpdateMap atomic swap
+- DeviceRegistry supports ReloadAsync with async DNS and volatile FrozenDictionary swap
+- JobIntervalRegistry.Unregister and LivenessVectorService.Remove for cleanup on config reload
+- SimetraConfigModel POCO unifies OidMap + Devices in single JSON document
 - DeviceOptions.CommunityString optional override; null falls back to Simetra.{Name} convention
 - devices.json auto-loaded from CONFIG_DIRECTORY alongside oidmap-*.json files
 
@@ -54,5 +58,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-07
-Stopped at: Completed 14-03-PLAN.md (Phase 14 complete)
+Stopped at: Completed 15-01-PLAN.md
 Resume file: None
