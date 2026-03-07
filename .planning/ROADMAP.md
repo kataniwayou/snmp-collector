@@ -59,7 +59,11 @@ Plans:
   3. NPB simulator responds to SNMP GET for all 8-port OIDs defined in the OID map with realistic values (system health + per-port traffic)
   4. NPB simulator sends link up/down traps with correct OID bindings
   5. Both simulators authenticate using `Simetra.{DeviceName}` community string convention (e.g., `Simetra.OBP-01`, `Simetra.NPB-01`)
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 13-01-PLAN.md -- OBP simulator rewrite: 24 OIDs, power random walk, StateChange traps, Simetra.OBP-01 community
+- [ ] 13-02-PLAN.md -- NPB simulator rewrite: 68 OIDs, traffic profiles, system health, portLinkChange traps, Simetra.NPB-01 community
+- [ ] 13-03-PLAN.md -- K8s deployment YAML updates: health probes, env vars, configmap-devices OID references
 
 ### Phase 14: K8s Integration and E2E
 **Goal**: Simulator pods are deployed in K8s, snmp-collector ConfigMap has correct MetricPoll groups for both device types, and the full pipeline works end-to-end
@@ -82,5 +86,5 @@ Plans:
 | 1-10 | v1.0 | 48/48 | Complete | 2026-03-07 |
 | 11. OID Map Design and OBP Population | v1.1 | 3/3 | Complete | 2026-03-07 |
 | 12. NPB OID Population | v1.1 | 1/1 | Complete | 2026-03-07 |
-| 13. Simulator Refinement | v1.1 | 0/TBD | Not started | - |
+| 13. Simulator Refinement | v1.1 | 0/3 | Not started | - |
 | 14. K8s Integration and E2E | v1.1 | 0/TBD | Not started | - |
