@@ -25,7 +25,7 @@ public sealed class SnmpConsoleFormatterOptions : ConsoleFormatterOptions
 /// Custom plain-text console formatter that prefixes every log line with hostname, role, and
 /// correlationId context. Produces output in the format:
 /// <code>
-/// {timestamp} [{level}] [{hostname}|{role}|{globalId}|{operationId}] {category} {message}
+/// {timestamp} [{level}] [{hostname}|{podName}|{role}|{globalId}|{operationId}] {category} {message}
 /// </code>
 /// Replaces JSON structured console output with human-readable plain text suitable for
 /// local development while retaining operational context. Shows BOTH global and operation
@@ -71,6 +71,7 @@ public sealed class SnmpConsoleFormatter : ConsoleFormatter
         var timestamp = DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ");
         var level = GetLevelAbbreviation(logEntry.LogLevel);
         var hostname = Environment.GetEnvironmentVariable("PHYSICAL_HOSTNAME") ?? Environment.MachineName;
+        var podName = Environment.GetEnvironmentVariable("HOSTNAME") ?? Environment.MachineName;
         var role = _leaderElection?.CurrentRole ?? "unknown";
         var globalId = _correlationService?.CurrentCorrelationId ?? "none";
         var operationId = _correlationService?.OperationCorrelationId;
@@ -81,6 +82,8 @@ public sealed class SnmpConsoleFormatter : ConsoleFormatter
         textWriter.Write(level);
         textWriter.Write("] [");
         textWriter.Write(hostname);
+        textWriter.Write('|');
+        textWriter.Write(podName);
         textWriter.Write('|');
         textWriter.Write(role);
         textWriter.Write('|');
