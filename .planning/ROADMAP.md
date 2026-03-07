@@ -4,6 +4,7 @@
 
 - v1.0 Foundation - Phases 1-10 (shipped 2026-03-07)
 - v1.1 Device Simulation - Phases 11-14 (shipped 2026-03-07)
+- v1.2 Operational Enhancements - Phases 15+ (not started)
 
 ## Phases
 
@@ -81,6 +82,27 @@ Plans:
 - [x] 14-02-PLAN.md -- ConfigMap devices.json with all 92 OIDs for OBP-01 and NPB-01
 - [x] 14-03-PLAN.md -- E2E verification script querying Prometheus for poll and trap metrics
 
+### v1.2 Operational Enhancements (Not Started)
+
+**Milestone Goal:** Consolidate configuration into a single documented ConfigMap, replace file-based hot-reload with K8s API watch, and enable dynamic device/poll schedule reloading without pod restart.
+
+- [ ] **Phase 15: K8s ConfigMap Watch and Unified Config** - Single ConfigMap with documented JSONC, K8s API watch for live reload of OID maps and device/poll config
+
+## Phase Details (v1.2)
+
+### Phase 15: K8s ConfigMap Watch and Unified Config
+**Goal**: All device configuration (OID maps, devices, poll schedules) lives in a single documented ConfigMap key, loaded via K8s API watch with full live reload — no pod restart needed for any config change
+**Depends on**: Phase 14 (v1.1 complete)
+**Requirements**: OPS-01, CFG-01, CFG-02, CFG-03
+**Success Criteria** (what must be TRUE):
+  1. Single ConfigMap key contains all OID maps (92 OIDs) and device entries with JSONC documentation comments
+  2. Separate oidmap-*.json and devices.json files are removed — single source of truth
+  3. K8s API watch detects ConfigMap changes and reloads OID map + device config at runtime
+  4. Adding/removing devices or changing poll OIDs/intervals takes effect without pod restart (Quartz jobs re-registered)
+  5. RBAC updated with configmaps read/watch permission
+  6. Local development fallback works without K8s (file-based loading when not in cluster)
+**Plans**: TBD
+
 ## Progress
 
 **Execution Order:** 11 -> 12 -> 13 -> 14
@@ -92,3 +114,4 @@ Plans:
 | 12. NPB OID Population | v1.1 | 1/1 | Complete | 2026-03-07 |
 | 13. Simulator Refinement | v1.1 | 3/3 | Complete | 2026-03-07 |
 | 14. K8s Integration and E2E | v1.1 | 3/3 | Complete | 2026-03-07 |
+| 15. K8s ConfigMap Watch and Unified Config | v1.2 | 0/0 | Not started | - |

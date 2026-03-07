@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Core value:** Every SNMP OID — from a trap or a poll — gets resolved, typed correctly, and pushed to Prometheus where it's queryable in Grafana within seconds.
-**Current focus:** v1.1 Device Simulation — Phase 14 (next)
+**Current focus:** v1.2 Operational Enhancements — Phase 15 (next)
 
 ## Current Position
 
-Phase: 14 of 14 (K8s Integration and E2E)
-Plan: 3 of 3
-Status: Phase complete
-Last activity: 2026-03-07 — Completed 14-03-PLAN.md (E2E verification script)
+Phase: 15 (K8s ConfigMap Watch and Unified Config)
+Plan: 0 of TBD
+Status: Not started
+Last activity: 2026-03-07 — Phase 15 added to roadmap (K8s API watch + unified config)
 
 Progress: [####################] 48/48 v1.0 complete, 9/9 v1.1 plans
 

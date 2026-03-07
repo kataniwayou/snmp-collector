@@ -33,6 +33,20 @@ Requirements for v1.1 Device Simulation milestone. Each maps to roadmap phases.
 - [x] **POLL-01**: snmp-collector ConfigMap updated with OBP MetricPoll groups matching OID map
 - [x] **POLL-02**: snmp-collector ConfigMap updated with NPB MetricPoll groups matching OID map
 
+## v1.2 Requirements
+
+Requirements for v1.2 Operational Enhancements milestone.
+
+### Configuration Management
+
+- [ ] **CFG-01**: Single ConfigMap key with all OID maps + device entries + JSONC documentation (replaces separate oidmap-*.json and devices.json)
+- [ ] **CFG-02**: K8s API watch detects ConfigMap changes and reloads config at runtime (replaces file-based IOptionsMonitor hot-reload)
+- [ ] **CFG-03**: Local development fallback loads config from file when not running in K8s cluster
+
+### Operational Enhancements
+
+- [ ] **OPS-01**: Hot-reloadable device configuration (add/remove devices, change OIDs/intervals without pod restart, Quartz jobs re-registered dynamically)
+
 ## v2 Requirements
 
 ### Advanced Collection
@@ -42,7 +56,6 @@ Requirements for v1.1 Device Simulation milestone. Each maps to roadmap phases.
 
 ### Operational Enhancements
 
-- **OPS-01**: Hot-reloadable device configuration (add/remove devices, change OIDs/intervals without restart)
 - **OPS-02**: Grafana dashboard templates for NPB and OBP devices
 - **OPS-03**: Prometheus alerting rules for common failure conditions
 
@@ -75,9 +88,15 @@ Requirements for v1.1 Device Simulation milestone. Each maps to roadmap phases.
 | POLL-01 | Phase 14 | Complete |
 | POLL-02 | Phase 14 | Complete |
 
+| CFG-01 | Phase 15 | Pending |
+| CFG-02 | Phase 15 | Pending |
+| CFG-03 | Phase 15 | Pending |
+| OPS-01 | Phase 15 | Pending |
+
 **Coverage:**
-- v1.1 requirements: 14 total
-- Mapped to phases: 14
+- v1.1 requirements: 14 total (14 complete)
+- v1.2 requirements: 4 total (0 complete)
+- Mapped to phases: 18
 - Unmapped: 0
 
 ---
