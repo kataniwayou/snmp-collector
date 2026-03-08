@@ -2,9 +2,9 @@
 OBP Bypass SNMP Simulator
 
 Simulates a 4-link CGS OBP optical bypass device for testing Simetra's SNMP
-trap and poll pipeline. Serves exactly 24 poll OIDs (4 links x 6 metrics each)
-matching oidmap-obp.json 1:1, with power random walk on R1-R4 receivers and
-StateChange traps for all 4 links.
+trap and poll pipeline. Serves exactly 27 OIDs: 24 poll OIDs (4 links x 6
+metrics each) + 3 NMU info OIDs, matching oidmaps.json 1:1, with power
+random walk on R1-R4 receivers and StateChange traps for all 4 links.
 
 OID tree: 1.3.6.1.4.1.47477.10.21.{link}.3.{suffix}.0
   link   = 1..4
@@ -160,6 +160,28 @@ for link_num in range(1, 5):
 mibBuilder.export_symbols("__OBP-SIM-MIB", **symbols)
 
 # ---------------------------------------------------------------------------
+# Static NMU info OIDs: BYPASS_PREFIX suffix .60.{1,13,15}.0
+# ---------------------------------------------------------------------------
+NMU_PREFIX = f"{BYPASS_PREFIX}.60"
+STATIC_NMU_INFO = [
+    (1,  "obp_device_type",  "OBP4"),
+    (13, "obp_sw_version",   "v2.1.0"),
+    (15, "obp_serial",       "SN-OBP-001"),
+]
+
+nmu_symbols = {}
+for suffix, label, value in STATIC_NMU_INFO:
+    oid_str = f"{NMU_PREFIX}.{suffix}"
+    oid_tuple = oid_str_to_tuple(oid_str)
+    nmu_symbols[f"nmu_scalar_{suffix}"] = MibScalar(oid_tuple, v2c.OctetString())
+    nmu_symbols[f"nmu_instance_{suffix}"] = DynamicInstance(
+        oid_tuple, (0,), v2c.OctetString(), lambda v=value: v
+    )
+    registered_oids.append(f"{oid_str}.0")
+
+mibBuilder.export_symbols("__OBP-NMU-MIB", **nmu_symbols)
+
+# ---------------------------------------------------------------------------
 # Helper functions
 # ---------------------------------------------------------------------------
 
@@ -275,7 +297,7 @@ async def per_link_trap_loop(link_num):
 
 
 def main():
-    log.info("OBP Bypass Simulator starting (24 OIDs, 4-link StateChange traps)...")
+    log.info("OBP Bypass Simulator starting (27 OIDs, 4-link StateChange traps)...")
     log.info("PID: %d", os.getpid())
     log.info("Community string: %s", COMMUNITY)
     log.info(
