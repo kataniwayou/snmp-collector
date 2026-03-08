@@ -1,26 +1,26 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: simetra
+  name: snmp-collector
   namespace: simetra
   labels:
-    app: simetra
+    app: snmp-collector
 spec:
   # Increase to 3 if desired; leader election supports multiple replicas
   replicas: 1
   selector:
     matchLabels:
-      app: simetra
+      app: snmp-collector
   template:
     metadata:
       labels:
-        app: simetra
+        app: snmp-collector
     spec:
       serviceAccountName: simetra-sa
       terminationGracePeriodSeconds: 30
       containers:
-      - name: simetra
-        image: simetra:local
+      - name: snmp-collector
+        image: snmp-collector:local
         imagePullPolicy: Never
         ports:
         - containerPort: 8080
