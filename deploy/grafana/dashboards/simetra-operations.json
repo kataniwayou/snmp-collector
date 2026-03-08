@@ -227,7 +227,8 @@
           "options": {}
         }
       ],
-      "type": "table"
+      "type": "table",
+      "description": "Lists all running SnmpCollector pods with their instance ID, hostname, and Kubernetes node. Confirms replica count and distribution."
     },
     {
       "collapsed": false,
@@ -334,7 +335,8 @@
         }
       ],
       "title": "Events Published",
-      "type": "timeseries"
+      "type": "timeseries",
+      "description": "Rate of SNMP events published to the processing channel by MetricPollJob and SnmpTrapListenerService. Source: snmp_event_published_total."
     },
     {
       "datasource": {
@@ -429,7 +431,8 @@
         }
       ],
       "title": "Events Handled",
-      "type": "timeseries"
+      "type": "timeseries",
+      "description": "Rate of events successfully processed through the MediatR pipeline. Source: snmp_event_handled_total."
     },
     {
       "datasource": {
@@ -524,7 +527,8 @@
         }
       ],
       "title": "Event Errors",
-      "type": "timeseries"
+      "type": "timeseries",
+      "description": "Rate of events that threw exceptions during pipeline processing, caught by ExceptionBehavior. Source: snmp_event_errors_total."
     },
     {
       "datasource": {
@@ -619,7 +623,8 @@
         }
       ],
       "title": "Events Rejected",
-      "type": "timeseries"
+      "type": "timeseries",
+      "description": "Rate of events that failed MediatR validation (e.g. missing OID, empty value). Source: snmp_event_validation_failed_total."
     },
     {
       "datasource": {
@@ -714,7 +719,8 @@
         }
       ],
       "title": "Polls Executed",
-      "type": "timeseries"
+      "type": "timeseries",
+      "description": "Rate of SNMP GET poll cycles completed by MetricPollJob. Source: snmp_poll_executed_total."
     },
     {
       "datasource": {
@@ -809,7 +815,8 @@
         }
       ],
       "title": "Traps Received",
-      "type": "timeseries"
+      "type": "timeseries",
+      "description": "Rate of SNMP trap PDUs received by SnmpTrapListenerService. Source: snmp_trap_received_total."
     },
     {
       "datasource": {
@@ -904,7 +911,8 @@
         }
       ],
       "title": "Trap Auth Failed",
-      "type": "timeseries"
+      "type": "timeseries",
+      "description": "Rate of traps rejected due to SNMP community string mismatch. Source: snmp_trap_auth_failed_total."
     },
     {
       "datasource": {
@@ -999,7 +1007,8 @@
         }
       ],
       "title": "Trap Unknown Device",
-      "type": "timeseries"
+      "type": "timeseries",
+      "description": "Rate of traps received from IP addresses not in the configured device list. Source: snmp_trap_unknown_device_total."
     },
     {
       "datasource": {
@@ -1094,7 +1103,8 @@
         }
       ],
       "title": "Traps Dropped",
-      "type": "timeseries"
+      "type": "timeseries",
+      "description": "Rate of traps dropped because the processing channel was full. Source: snmp_trap_dropped_total."
     },
     {
       "datasource": {
@@ -1189,7 +1199,8 @@
         }
       ],
       "title": "Poll Unreachable",
-      "type": "timeseries"
+      "type": "timeseries",
+      "description": "Rate of poll attempts where the target device did not respond (SNMP timeout). Source: snmp_poll_unreachable_total."
     },
     {
       "datasource": {
@@ -1284,7 +1295,8 @@
         }
       ],
       "title": "Poll Recovered",
-      "type": "timeseries"
+      "type": "timeseries",
+      "description": "Rate of polls that succeeded after a device was previously marked unreachable. Source: snmp_poll_recovered_total."
     },
     {
       "collapsed": false,
@@ -1391,7 +1403,8 @@
         }
       ],
       "title": "GC Collections Rate",
-      "type": "timeseries"
+      "type": "timeseries",
+      "description": "Rate of .NET garbage collections by generation (Gen0, Gen1, Gen2). High Gen2 rates may indicate memory pressure. Source: dotnet_gc_collections_total."
     },
     {
       "datasource": {
@@ -1486,7 +1499,8 @@
         }
       ],
       "title": "GC Pause Time Rate",
-      "type": "timeseries"
+      "type": "timeseries",
+      "description": "Rate of time the application is paused for garbage collection. Sustained high values impact throughput. Source: dotnet_gc_pause_time_seconds_total."
     },
     {
       "datasource": {
@@ -1577,7 +1591,8 @@
         }
       ],
       "title": "Process Working Set",
-      "type": "timeseries"
+      "type": "timeseries",
+      "description": "Total physical memory (RSS) used by each pod. Source: dotnet_process_memory_working_set_bytes."
     },
     {
       "datasource": {
@@ -1672,7 +1687,8 @@
         }
       ],
       "title": "GC Heap Size",
-      "type": "timeseries"
+      "type": "timeseries",
+      "description": "Managed heap size after last GC, broken down by generation. Source: dotnet_gc_last_collection_heap_size_bytes."
     },
     {
       "datasource": {
@@ -1755,7 +1771,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "dotnet_thread_pool_thread_count{k8s_pod_name=~\"$pod\"}",
+          "expr": "dotnet_thread_pool_thread_count_total{k8s_pod_name=~\"$pod\"}",
           "legendFormat": "{{k8s_pod_name}}",
           "refId": "A",
           "range": true,
@@ -1763,7 +1779,8 @@
         }
       ],
       "title": "Thread Pool Threads",
-      "type": "timeseries"
+      "type": "timeseries",
+      "description": "Number of active .NET thread pool threads. Source: dotnet_thread_pool_thread_count_total."
     },
     {
       "datasource": {
@@ -1846,7 +1863,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "dotnet_thread_pool_queue_length{k8s_pod_name=~\"$pod\"}",
+          "expr": "dotnet_thread_pool_queue_length_total{k8s_pod_name=~\"$pod\"}",
           "legendFormat": "{{k8s_pod_name}}",
           "refId": "A",
           "range": true,
@@ -1854,7 +1871,8 @@
         }
       ],
       "title": "Thread Pool Queue Length",
-      "type": "timeseries"
+      "type": "timeseries",
+      "description": "Number of work items queued to the .NET thread pool. Sustained non-zero values indicate thread starvation. Source: dotnet_thread_pool_queue_length_total."
     }
   ],
   "refresh": "5s",
@@ -1876,14 +1894,37 @@
           "type": "prometheus",
           "uid": "${DS_PROMETHEUS}"
         },
-        "definition": "label_values(snmp_event_published_total, k8s_pod_name)",
+        "definition": "label_values(snmp_event_published_total, service_instance_id)",
+        "includeAll": true,
+        "label": "Host Name",
+        "multi": true,
+        "name": "host",
+        "query": {
+          "qryType": 1,
+          "query": "label_values(snmp_event_published_total, service_instance_id)"
+        },
+        "refresh": 2,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${DS_PROMETHEUS}"
+        },
+        "definition": "label_values(snmp_event_published_total{service_instance_id=~\"$host\"}, k8s_pod_name)",
         "includeAll": true,
         "label": "Pod",
         "multi": true,
         "name": "pod",
         "query": {
           "qryType": 1,
-          "query": "label_values(snmp_event_published_total, k8s_pod_name)"
+          "query": "label_values(snmp_event_published_total{service_instance_id=~\"$host\"}, k8s_pod_name)"
         },
         "refresh": 2,
         "type": "query"
