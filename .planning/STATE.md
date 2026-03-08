@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-08)
 
 **Core value:** Every SNMP OID — from a trap or a poll — gets resolved, typed correctly, and pushed to Prometheus where it's queryable in Grafana within seconds.
-**Current focus:** v1.3 Grafana Dashboards — Phase 17 Dashboard Provisioning
+**Current focus:** v1.3 Grafana Dashboards — Phase 18 Operations Dashboard
 
 ## Current Position
 
-Phase: 17 of 19 (Dashboard Provisioning)
+Phase: 19 of 19 (Device Detail Dashboard)
 Plan: 0 of 1 in current phase
-Status: Ready to plan
-Last activity: 2026-03-08 — Roadmap created for v1.3
+Status: Phase 18 complete, ready for Phase 19
+Last activity: 2026-03-08 — Completed 18-01-PLAN.md (Operations Dashboard)
 
-Progress: [####################] 48/48 v1.0, 10/10 v1.1, 8/8 v1.2 | [░░░░░░░░░░] 0/3 v1.3
+Progress: [####################] 48/48 v1.0, 10/10 v1.1, 8/8 v1.2 | [#####░░░░░] 1/2 v1.3
 
 ## Milestone History
 
@@ -39,9 +39,9 @@ See `.planning/milestones/` for archived roadmaps and requirements.
 - IsHeartbeat bool flag set at ingestion boundary (ChannelConsumerService); behaviors/handlers use flag, not string comparison
 - Split config: simetra-oidmaps ConfigMap (oidmaps.json bare dict) + simetra-devices ConfigMap (devices.json bare array) + simetra-config (appsettings only)
 - K8s directory mount at /app/config (no subPath) enables ConfigMap hot-reload
-- Existing Grafana datasource provisioning at deploy/grafana/provisioning/datasources/simetra-prometheus.yaml
-- Existing dashboard JSONs at deploy/grafana/dashboards/ (reference project files, to be replaced)
-- Grafana deployment has no volume mounts for provisioning yet (manual UI setup documented)
+- Dashboard approach: Claude creates JSON files, user imports manually via Grafana UI (no K8s provisioning)
+- Phase 17 removed — stale file cleanup merged into Phase 18
+- Operations dashboard at deploy/grafana/dashboards/simetra-operations.json (21 panels: pod identity table, 11 pipeline counters, 6 runtime, 3 row headers)
 
 ### Known Tech Debt
 
@@ -65,5 +65,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-08
-Stopped at: v1.3 roadmap created, ready to plan Phase 17
+Stopped at: Completed 18-01-PLAN.md (Operations Dashboard)
 Resume file: None
