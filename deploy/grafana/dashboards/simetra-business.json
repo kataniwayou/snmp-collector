@@ -168,8 +168,56 @@
             },
             "properties": [
               {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "telemetry_sdk_language"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "telemetry_sdk_name"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "telemetry_sdk_version"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "k8s_pod_name"
+            },
+            "properties": [
+              {
                 "id": "displayName",
-                "value": "Service Instance"
+                "value": "Pod Name"
               }
             ]
           },
@@ -261,7 +309,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "snmp_gauge{device_name=~\"$device\"}",
+          "expr": "snmp_gauge{service_instance_id=~\"$host\", k8s_pod_name=~\"$pod\", device_name=~\"$device\"}",
           "format": "table",
           "instant": true,
           "refId": "A"
@@ -273,7 +321,7 @@
           "id": "organize",
           "options": {
             "indexByName": {
-              "service_instance_id": 0,
+              "k8s_pod_name": 0,
               "device_name": 1,
               "metric_name": 2,
               "oid": 3,
@@ -410,7 +458,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "snmp_type"
+              "options": "service_instance_id"
             },
             "properties": [
               {
@@ -422,12 +470,60 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "service_instance_id"
+              "options": "telemetry_sdk_language"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "telemetry_sdk_name"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "telemetry_sdk_version"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "snmp_type"
             },
             "properties": [
               {
                 "id": "displayName",
-                "value": "Service Instance"
+                "value": "SNMP Type"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "k8s_pod_name"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Pod Name"
               }
             ]
           },
@@ -507,7 +603,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "snmp_info{device_name=~\"$device\"}",
+          "expr": "snmp_info{service_instance_id=~\"$host\", k8s_pod_name=~\"$pod\", device_name=~\"$device\"}",
           "format": "table",
           "instant": true,
           "refId": "A"
@@ -519,11 +615,12 @@
           "id": "organize",
           "options": {
             "indexByName": {
-              "service_instance_id": 0,
+              "k8s_pod_name": 0,
               "device_name": 1,
               "metric_name": 2,
               "oid": 3,
-              "value": 4
+              "snmp_type": 4,
+              "value": 5
             }
           }
         }
@@ -550,14 +647,60 @@
           "type": "prometheus",
           "uid": "${DS_PROMETHEUS}"
         },
-        "definition": "label_values(snmp_gauge, device_name)",
+        "definition": "label_values(snmp_gauge, service_instance_id)",
+        "includeAll": true,
+        "label": "Host",
+        "multi": true,
+        "name": "host",
+        "query": {
+          "qryType": 1,
+          "query": "label_values(snmp_gauge, service_instance_id)"
+        },
+        "refresh": 2,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${DS_PROMETHEUS}"
+        },
+        "definition": "label_values(snmp_gauge{service_instance_id=~\"$host\"}, k8s_pod_name)",
+        "includeAll": true,
+        "label": "Pod",
+        "multi": true,
+        "name": "pod",
+        "query": {
+          "qryType": 1,
+          "query": "label_values(snmp_gauge{service_instance_id=~\"$host\"}, k8s_pod_name)"
+        },
+        "refresh": 2,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${DS_PROMETHEUS}"
+        },
+        "definition": "label_values(snmp_gauge{service_instance_id=~\"$host\", k8s_pod_name=~\"$pod\"}, device_name)",
         "includeAll": true,
         "label": "Device",
         "multi": true,
         "name": "device",
         "query": {
           "qryType": 1,
-          "query": "label_values(snmp_gauge, device_name)"
+          "query": "label_values(snmp_gauge{service_instance_id=~\"$host\", k8s_pod_name=~\"$pod\"}, device_name)"
         },
         "refresh": 2,
         "type": "query"
