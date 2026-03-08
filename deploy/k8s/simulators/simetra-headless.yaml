@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: simetra-pods
+  namespace: simetra
+  labels:
+    app: simetra
+spec:
+  clusterIP: None
+  selector:
+    app: snmp-collector
+  ports:
+  - name: snmp
+    port: 10162
+    targetPort: snmp
+    protocol: UDP
