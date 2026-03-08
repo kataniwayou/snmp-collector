@@ -1,15 +1,16 @@
 """
 NPB (Network Packet Broker) SNMP Simulator
 
-Serves exactly 68 OIDs matching oidmap-npb.json:
-  - 4 system metrics at 47477.100.1.{metricId}.0 (OctetString)
+Serves exactly 71 OIDs matching oidmaps.json:
+  - 4 system metrics at 47477.100.1.{1-4}.0 (Gauge32/TimeTicks)
+  - 3 static info OIDs at 47477.100.1.{5-7}.0 (OctetString)
   - 64 per-port metrics at 47477.100.2.{port}.{metricId}.0
     (8 ports x 8 metrics: 1 Integer32 status + 7 Counter64 counters)
 
 Traffic profiles per port:
   P1, P2, P7: heavy    P5, P6: medium    P3: light    P4, P8: zero (down)
 
-System health OIDs random-walk as OctetString values.
+System health OIDs random-walk as Gauge32/TimeTicks values.
 portLinkChange traps fire for active ports (P1-P3, P5-P7) with status varbind.
 P4 and P8 remain permanently down but respond to GET with valid values.
 
@@ -92,12 +93,12 @@ TRAP_PORTS = [1, 2, 3, 5, 6, 7]
 # ---------------------------------------------------------------------------
 # OID metric definitions
 # ---------------------------------------------------------------------------
-# System metrics: 47477.100.1.{metricId}.0 -- all OctetString per OID map
+# System metrics: 47477.100.1.{metricId}.0 -- numeric types for gauge classification
 SYSTEM_METRICS = [
-    (1, "cpu_util",  v2c.OctetString),
-    (2, "mem_util",  v2c.OctetString),
-    (3, "sys_temp",  v2c.OctetString),
-    (4, "uptime",    v2c.OctetString),
+    (1, "cpu_util",  v2c.Gauge32),     # CPU % x10 (e.g., 150 = 15.0%)
+    (2, "mem_util",  v2c.Gauge32),     # Memory % x10
+    (3, "sys_temp",  v2c.Gauge32),     # Temperature C x10 (e.g., 425 = 42.5C)
+    (4, "uptime",    v2c.TimeTicks),   # Centiseconds (standard SNMP uptime)
 ]
 
 # Per-port metrics: 47477.100.2.{port}.{metricId}.0
@@ -116,10 +117,10 @@ PORT_METRICS = [
 # State
 # ---------------------------------------------------------------------------
 system_state = {
-    "cpu_util": "15.0",
-    "mem_util": "45.0",
-    "sys_temp": "42.0",
-    "uptime": "0",
+    "cpu_util": 150,    # 15.0% x10
+    "mem_util": 450,    # 45.0% x10
+    "sys_temp": 420,    # 42.0C x10
+    "uptime": 0,        # centiseconds
 }
 
 port_states = {}
@@ -199,6 +200,22 @@ for metric_id, state_key, syntax_cls in SYSTEM_METRICS:
     )
     oid_count += 1
 
+# Static info OIDs: 47477.100.1.{5,6,7}.0 -- device identity, never change
+STATIC_INFO = [
+    (5, "npb_model",      "NPB-2E"),
+    (6, "npb_serial",     "SN-NPB-001"),
+    (7, "npb_sw_version", "5.2.4"),
+]
+
+for metric_id, label, value in STATIC_INFO:
+    oid_str = f"{NPB_PREFIX}.1.{metric_id}"
+    oid_tuple = oid_str_to_tuple(oid_str)
+    symbols[f"info_scalar_{metric_id}"] = MibScalar(oid_tuple, v2c.OctetString())
+    symbols[f"info_instance_{metric_id}"] = DynamicInstance(
+        oid_tuple, (0,), v2c.OctetString(), lambda v=value: v
+    )
+    oid_count += 1
+
 # Per-port metrics: 8 ports x 8 metrics = 64 OIDs
 for port in range(1, 9):
     for metric_id, state_key, syntax_cls in PORT_METRICS:
@@ -215,7 +232,7 @@ for port in range(1, 9):
         oid_count += 1
 
 mibBuilder.export_symbols("__NPB-SIM-MIB", **symbols)
-log.info("Registered %d poll OIDs (4 system + 8 ports x 8 metrics)", oid_count)
+log.info("Registered %d poll OIDs (4 system + 3 info + 8 ports x 8 metrics)", oid_count)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -335,10 +352,10 @@ async def update_system_health():
         )
         _health_floats["uptime_int"] += HEALTH_UPDATE_INTERVAL
 
-        system_state["cpu_util"] = f"{_health_floats['cpu_util']:.1f}"
-        system_state["mem_util"] = f"{_health_floats['mem_util']:.1f}"
-        system_state["sys_temp"] = f"{_health_floats['sys_temp']:.1f}"
-        system_state["uptime"] = str(_health_floats["uptime_int"])
+        system_state["cpu_util"] = int(_health_floats["cpu_util"] * 10)
+        system_state["mem_util"] = int(_health_floats["mem_util"] * 10)
+        system_state["sys_temp"] = int(_health_floats["sys_temp"] * 10)
+        system_state["uptime"] = int(_health_floats["uptime_int"] * 100)  # centiseconds
 
 
 # ---------------------------------------------------------------------------
@@ -456,7 +473,7 @@ def main():
             log.warning("Signal handler for %s not supported on this platform", sig.name)
 
     log.info("SNMP agent listening on 0.0.0.0:161 (community: %s)", COMMUNITY)
-    log.info("Serving %d OIDs (4 system + 64 per-port)", oid_count)
+    log.info("Serving %d OIDs (4 system + 3 info + 64 per-port)", oid_count)
     snmpEngine.open_dispatcher()
 
 
