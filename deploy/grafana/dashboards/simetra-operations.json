@@ -624,7 +624,7 @@
       ],
       "title": "Events Rejected",
       "type": "timeseries",
-      "description": "Rate of events that failed MediatR validation (e.g. missing OID, empty value). Source: snmp_event_validation_failed_total."
+      "description": "Rate of events that failed MediatR validation (e.g. missing OID, empty value). Source: snmp_event_rejected_total."
     },
     {
       "datasource": {
@@ -688,7 +688,7 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 6,
+        "w": 8,
         "x": 0,
         "y": 15
       },
@@ -784,8 +784,8 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 6,
-        "x": 6,
+        "w": 8,
+        "x": 8,
         "y": 15
       },
       "id": 9,
@@ -880,8 +880,8 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 6,
-        "x": 12,
+        "w": 8,
+        "x": 16,
         "y": 15
       },
       "id": 10,
@@ -913,102 +913,6 @@
       "title": "Trap Auth Failed",
       "type": "timeseries",
       "description": "Rate of traps rejected due to SNMP community string mismatch. Source: snmp_trap_auth_failed_total."
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "ops"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 6,
-        "x": 18,
-        "y": 15
-      },
-      "id": 11,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "expr": "sum by (k8s_pod_name) (rate(snmp_trap_unknown_device_total{k8s_pod_name=~\"$pod\"}[$__rate_interval]))",
-          "legendFormat": "{{k8s_pod_name}}",
-          "refId": "A",
-          "range": true,
-          "instant": false
-        }
-      ],
-      "title": "Trap Unknown Device",
-      "type": "timeseries",
-      "description": "Rate of traps received from IP addresses not in the configured device list. Source: snmp_trap_unknown_device_total."
     },
     {
       "datasource": {
