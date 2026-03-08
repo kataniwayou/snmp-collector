@@ -7,17 +7,17 @@
 
 Requirements for Grafana Dashboards milestone. Each maps to roadmap phases.
 
-### Dashboard Provisioning
+### Dashboard Files
 
-- [ ] **DASH-01**: Grafana dashboard provisioning via JSON ConfigMaps with automatic loading
-- [ ] **DASH-02**: Prometheus datasource provisioned automatically (no manual Grafana UI setup)
+- [x] **DASH-01**: Dashboard JSON files created and available for manual Grafana import
+- [x] **DASH-02**: Stale reference project dashboard files removed
 
 ### Operations Dashboard
 
-- [ ] **OPS-01**: Pod identity/role lookup table showing service_instance_id, pod name, and leader/follower role
-- [ ] **OPS-02**: Time series panels for pipeline counters (snmp_event_published_total, snmp_poll_executed_total, snmp_oid_resolved_total, etc.) with per-pod breakdown
-- [ ] **OPS-03**: Time series panels for .NET runtime metrics (GC collections, memory, thread pool) with per-pod breakdown
-- [ ] **OPS-04**: Dashboard auto-refresh at configurable interval
+- [x] **OPS-01**: Pod identity/role lookup table showing service_instance_id, pod name, and leader/follower role
+- [x] **OPS-02**: Time series panels for pipeline counters (snmp_event_published_total, snmp_poll_executed_total, snmp_oid_resolved_total, etc.) with per-pod breakdown
+- [x] **OPS-03**: Time series panels for .NET runtime metrics (GC collections, memory, thread pool) with per-pod breakdown
+- [x] **OPS-04**: Dashboard auto-refresh at configurable interval
 
 ### Business Dashboard
 
@@ -32,19 +32,20 @@ Requirements for Grafana Dashboards milestone. Each maps to roadmap phases.
 |---------|--------|
 | Alerting rules | Separate concern, defer to future milestone |
 | Per-device dedicated dashboards | Device-agnostic tables cover this |
-| Dashboard editing via Grafana UI | Provisioned as code via ConfigMaps |
+| Automated dashboard provisioning via K8s ConfigMaps | User imports dashboards manually via Grafana UI |
+| Automated Prometheus datasource provisioning | User configures datasource manually via Grafana UI |
 | Graph panels for business metrics | Tables requested, not time series |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DASH-01 | Phase 17 | Pending |
-| DASH-02 | Phase 17 | Pending |
-| OPS-01 | Phase 18 | Pending |
-| OPS-02 | Phase 18 | Pending |
-| OPS-03 | Phase 18 | Pending |
-| OPS-04 | Phase 18 | Pending |
+| DASH-01 | Phase 18 | Complete |
+| DASH-02 | Phase 18 | Complete |
+| OPS-01 | Phase 18 | Complete |
+| OPS-02 | Phase 18 | Complete |
+| OPS-03 | Phase 18 | Complete |
+| OPS-04 | Phase 18 | Complete |
 | BIZ-01 | Phase 19 | Pending |
 | BIZ-02 | Phase 19 | Pending |
 | BIZ-03 | Phase 19 | Pending |

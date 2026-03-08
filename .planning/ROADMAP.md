@@ -13,7 +13,7 @@ This milestone delivers two purpose-built Grafana dashboard JSON files for the S
 
 ## Phases
 
-- [ ] **Phase 18: Operations Dashboard** - Pod identity, pipeline counters, and .NET runtime observability
+- [x] **Phase 18: Operations Dashboard** - Pod identity, pipeline counters, and .NET runtime observability
 - [ ] **Phase 19: Business Dashboard** - Device-agnostic gauge and info metric tables
 
 ## Phase Details
@@ -32,7 +32,7 @@ This milestone delivers two purpose-built Grafana dashboard JSON files for the S
 **Plans:** 1 plan
 
 Plans:
-- [ ] 18-01-PLAN.md -- Delete stale files, create operations dashboard JSON (pod table, 11 pipeline panels, 6 runtime panels)
+- [x] 18-01-PLAN.md -- Delete stale files, create operations dashboard JSON (pod table, 11 pipeline panels, 6 runtime panels)
 
 ### Phase 19: Business Dashboard
 **Goal**: Users can view current SNMP gauge and info metric values for any device in dynamically-populated tables without hardcoded device names
@@ -56,5 +56,5 @@ Phases 18 and 19 can execute in parallel (no dependencies between them).
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 18. Operations Dashboard | 0/1 | Not started | - |
+| 18. Operations Dashboard | 1/1 | Complete | 2026-03-08 |
 | 19. Business Dashboard | 0/1 | Not started | - |
