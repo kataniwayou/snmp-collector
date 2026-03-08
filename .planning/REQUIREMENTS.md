@@ -21,10 +21,10 @@ Requirements for Grafana Dashboards milestone. Each maps to roadmap phases.
 
 ### Business Dashboard
 
-- [ ] **BIZ-01**: Gauge metrics table with label columns (service_instance_id, device_name, metric_name, oid, snmp_type, value) — device-agnostic, no hardcoded device names
-- [ ] **BIZ-02**: Info metrics table with label columns (service_instance_id, device_name, metric_name, oid, value) — device-agnostic, no hardcoded device names
-- [ ] **BIZ-03**: Tables auto-refresh to show live current values dynamically
-- [ ] **BIZ-04**: Tables automatically include any device present in metrics (no hardcoded names)
+- [x] **BIZ-01**: Gauge metrics table with label columns (service_instance_id, device_name, metric_name, oid, snmp_type, value) — device-agnostic, no hardcoded device names
+- [x] **BIZ-02**: Info metrics table with label columns (service_instance_id, device_name, metric_name, oid, value) — device-agnostic, no hardcoded device names
+- [x] **BIZ-03**: Tables auto-refresh to show live current values dynamically
+- [x] **BIZ-04**: Tables automatically include any device present in metrics (no hardcoded names)
 
 ## Out of Scope
 
@@ -46,10 +46,10 @@ Requirements for Grafana Dashboards milestone. Each maps to roadmap phases.
 | OPS-02 | Phase 18 | Complete |
 | OPS-03 | Phase 18 | Complete |
 | OPS-04 | Phase 18 | Complete |
-| BIZ-01 | Phase 19 | Pending |
-| BIZ-02 | Phase 19 | Pending |
-| BIZ-03 | Phase 19 | Pending |
-| BIZ-04 | Phase 19 | Pending |
+| BIZ-01 | Phase 19 | Complete |
+| BIZ-02 | Phase 19 | Complete |
+| BIZ-03 | Phase 19 | Complete |
+| BIZ-04 | Phase 19 | Complete |
 
 **Coverage:**
 - v1.3 requirements: 10 total
