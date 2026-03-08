@@ -65,7 +65,7 @@
         "x": 0,
         "y": 0
       },
-      "id": null,
+      "id": 1,
       "title": "Pod Identity",
       "type": "row"
     },
@@ -116,18 +116,6 @@
               {
                 "id": "custom.hidden",
                 "value": true
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "service_instance_id"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Service Instance"
               }
             ]
           },
@@ -196,7 +184,7 @@
         "x": 0,
         "y": 1
       },
-      "id": null,
+      "id": 2,
       "options": {
         "cellHeight": "sm",
         "footer": {
@@ -216,7 +204,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "count by (service_instance_id, k8s_pod_name) (snmp_event_published_total{service_instance_id=~\"$pod\"})",
+          "expr": "count by (k8s_pod_name) (snmp_event_published_total{k8s_pod_name=~\"$pod\"})",
           "format": "table",
           "instant": true,
           "refId": "A"
@@ -226,7 +214,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "count by (service_instance_id) (snmp_gauge{service_instance_id=~\"$pod\"})",
+          "expr": "clamp_max(count by (k8s_pod_name) (snmp_gauge{k8s_pod_name=~\"$pod\"}), 1)",
           "format": "table",
           "instant": true,
           "refId": "B"
@@ -249,7 +237,7 @@
         "x": 0,
         "y": 6
       },
-      "id": null,
+      "id": 3,
       "title": "Pipeline Counters",
       "type": "row"
     },
@@ -319,7 +307,7 @@
         "x": 0,
         "y": 7
       },
-      "id": null,
+      "id": 4,
       "options": {
         "legend": {
           "calcs": [],
@@ -338,9 +326,11 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by (service_instance_id) (rate(snmp_event_published_total{service_instance_id=~\"$pod\"}[$__rate_interval]))",
-          "legendFormat": "{{service_instance_id}}",
-          "refId": "A"
+          "expr": "sum by (k8s_pod_name) (rate(snmp_event_published_total{k8s_pod_name=~\"$pod\"}[$__rate_interval]))",
+          "legendFormat": "{{k8s_pod_name}}",
+          "refId": "A",
+          "range": true,
+          "instant": false
         }
       ],
       "title": "Events Published",
@@ -412,7 +402,7 @@
         "x": 6,
         "y": 7
       },
-      "id": null,
+      "id": 5,
       "options": {
         "legend": {
           "calcs": [],
@@ -431,9 +421,11 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by (service_instance_id) (rate(snmp_event_handled_total{service_instance_id=~\"$pod\"}[$__rate_interval]))",
-          "legendFormat": "{{service_instance_id}}",
-          "refId": "A"
+          "expr": "sum by (k8s_pod_name) (rate(snmp_event_handled_total{k8s_pod_name=~\"$pod\"}[$__rate_interval]))",
+          "legendFormat": "{{k8s_pod_name}}",
+          "refId": "A",
+          "range": true,
+          "instant": false
         }
       ],
       "title": "Events Handled",
@@ -505,7 +497,7 @@
         "x": 12,
         "y": 7
       },
-      "id": null,
+      "id": 6,
       "options": {
         "legend": {
           "calcs": [],
@@ -524,9 +516,11 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by (service_instance_id) (rate(snmp_event_errors_total{service_instance_id=~\"$pod\"}[$__rate_interval]))",
-          "legendFormat": "{{service_instance_id}}",
-          "refId": "A"
+          "expr": "sum by (k8s_pod_name) (rate(snmp_event_errors_total{k8s_pod_name=~\"$pod\"}[$__rate_interval]))",
+          "legendFormat": "{{k8s_pod_name}}",
+          "refId": "A",
+          "range": true,
+          "instant": false
         }
       ],
       "title": "Event Errors",
@@ -598,7 +592,7 @@
         "x": 18,
         "y": 7
       },
-      "id": null,
+      "id": 7,
       "options": {
         "legend": {
           "calcs": [],
@@ -617,9 +611,11 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by (service_instance_id) (rate(snmp_event_rejected_total{service_instance_id=~\"$pod\"}[$__rate_interval]))",
-          "legendFormat": "{{service_instance_id}}",
-          "refId": "A"
+          "expr": "sum by (k8s_pod_name) (rate(snmp_event_rejected_total{k8s_pod_name=~\"$pod\"}[$__rate_interval]))",
+          "legendFormat": "{{k8s_pod_name}}",
+          "refId": "A",
+          "range": true,
+          "instant": false
         }
       ],
       "title": "Events Rejected",
@@ -691,7 +687,7 @@
         "x": 0,
         "y": 15
       },
-      "id": null,
+      "id": 8,
       "options": {
         "legend": {
           "calcs": [],
@@ -710,9 +706,11 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by (service_instance_id) (rate(snmp_poll_executed_total{service_instance_id=~\"$pod\"}[$__rate_interval]))",
-          "legendFormat": "{{service_instance_id}}",
-          "refId": "A"
+          "expr": "sum by (k8s_pod_name) (rate(snmp_poll_executed_total{k8s_pod_name=~\"$pod\"}[$__rate_interval]))",
+          "legendFormat": "{{k8s_pod_name}}",
+          "refId": "A",
+          "range": true,
+          "instant": false
         }
       ],
       "title": "Polls Executed",
@@ -784,7 +782,7 @@
         "x": 6,
         "y": 15
       },
-      "id": null,
+      "id": 9,
       "options": {
         "legend": {
           "calcs": [],
@@ -803,9 +801,11 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by (service_instance_id) (rate(snmp_trap_received_total{service_instance_id=~\"$pod\"}[$__rate_interval]))",
-          "legendFormat": "{{service_instance_id}}",
-          "refId": "A"
+          "expr": "sum by (k8s_pod_name) (rate(snmp_trap_received_total{k8s_pod_name=~\"$pod\"}[$__rate_interval]))",
+          "legendFormat": "{{k8s_pod_name}}",
+          "refId": "A",
+          "range": true,
+          "instant": false
         }
       ],
       "title": "Traps Received",
@@ -877,7 +877,7 @@
         "x": 12,
         "y": 15
       },
-      "id": null,
+      "id": 10,
       "options": {
         "legend": {
           "calcs": [],
@@ -896,9 +896,11 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by (service_instance_id) (rate(snmp_trap_auth_failed_total{service_instance_id=~\"$pod\"}[$__rate_interval]))",
-          "legendFormat": "{{service_instance_id}}",
-          "refId": "A"
+          "expr": "sum by (k8s_pod_name) (rate(snmp_trap_auth_failed_total{k8s_pod_name=~\"$pod\"}[$__rate_interval]))",
+          "legendFormat": "{{k8s_pod_name}}",
+          "refId": "A",
+          "range": true,
+          "instant": false
         }
       ],
       "title": "Trap Auth Failed",
@@ -970,7 +972,7 @@
         "x": 18,
         "y": 15
       },
-      "id": null,
+      "id": 11,
       "options": {
         "legend": {
           "calcs": [],
@@ -989,9 +991,11 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by (service_instance_id) (rate(snmp_trap_unknown_device_total{service_instance_id=~\"$pod\"}[$__rate_interval]))",
-          "legendFormat": "{{service_instance_id}}",
-          "refId": "A"
+          "expr": "sum by (k8s_pod_name) (rate(snmp_trap_unknown_device_total{k8s_pod_name=~\"$pod\"}[$__rate_interval]))",
+          "legendFormat": "{{k8s_pod_name}}",
+          "refId": "A",
+          "range": true,
+          "instant": false
         }
       ],
       "title": "Trap Unknown Device",
@@ -1063,7 +1067,7 @@
         "x": 0,
         "y": 23
       },
-      "id": null,
+      "id": 12,
       "options": {
         "legend": {
           "calcs": [],
@@ -1082,9 +1086,11 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by (service_instance_id) (rate(snmp_trap_dropped_total{service_instance_id=~\"$pod\"}[$__rate_interval]))",
-          "legendFormat": "{{service_instance_id}}",
-          "refId": "A"
+          "expr": "sum by (k8s_pod_name) (rate(snmp_trap_dropped_total{k8s_pod_name=~\"$pod\"}[$__rate_interval]))",
+          "legendFormat": "{{k8s_pod_name}}",
+          "refId": "A",
+          "range": true,
+          "instant": false
         }
       ],
       "title": "Traps Dropped",
@@ -1156,7 +1162,7 @@
         "x": 6,
         "y": 23
       },
-      "id": null,
+      "id": 13,
       "options": {
         "legend": {
           "calcs": [],
@@ -1175,9 +1181,11 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by (service_instance_id) (rate(snmp_poll_unreachable_total{service_instance_id=~\"$pod\"}[$__rate_interval]))",
-          "legendFormat": "{{service_instance_id}}",
-          "refId": "A"
+          "expr": "sum by (k8s_pod_name) (rate(snmp_poll_unreachable_total{k8s_pod_name=~\"$pod\"}[$__rate_interval]))",
+          "legendFormat": "{{k8s_pod_name}}",
+          "refId": "A",
+          "range": true,
+          "instant": false
         }
       ],
       "title": "Poll Unreachable",
@@ -1249,7 +1257,7 @@
         "x": 12,
         "y": 23
       },
-      "id": null,
+      "id": 14,
       "options": {
         "legend": {
           "calcs": [],
@@ -1268,9 +1276,11 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by (service_instance_id) (rate(snmp_poll_recovered_total{service_instance_id=~\"$pod\"}[$__rate_interval]))",
-          "legendFormat": "{{service_instance_id}}",
-          "refId": "A"
+          "expr": "sum by (k8s_pod_name) (rate(snmp_poll_recovered_total{k8s_pod_name=~\"$pod\"}[$__rate_interval]))",
+          "legendFormat": "{{k8s_pod_name}}",
+          "refId": "A",
+          "range": true,
+          "instant": false
         }
       ],
       "title": "Poll Recovered",
@@ -1284,7 +1294,7 @@
         "x": 0,
         "y": 31
       },
-      "id": null,
+      "id": 15,
       "title": ".NET Runtime",
       "type": "row"
     },
@@ -1354,7 +1364,7 @@
         "x": 0,
         "y": 32
       },
-      "id": null,
+      "id": 16,
       "options": {
         "legend": {
           "calcs": [],
@@ -1373,9 +1383,11 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by (service_instance_id) (rate(dotnet_gc_collections_total{service_instance_id=~\"$pod\"}[$__rate_interval]))",
-          "legendFormat": "{{service_instance_id}}",
-          "refId": "A"
+          "expr": "sum by (k8s_pod_name) (rate(dotnet_gc_collections_total{k8s_pod_name=~\"$pod\"}[$__rate_interval]))",
+          "legendFormat": "{{k8s_pod_name}}",
+          "refId": "A",
+          "range": true,
+          "instant": false
         }
       ],
       "title": "GC Collections Rate",
@@ -1447,7 +1459,7 @@
         "x": 8,
         "y": 32
       },
-      "id": null,
+      "id": 17,
       "options": {
         "legend": {
           "calcs": [],
@@ -1466,9 +1478,11 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by (service_instance_id) (rate(dotnet_gc_pause_time_seconds_total{service_instance_id=~\"$pod\"}[$__rate_interval]))",
-          "legendFormat": "{{service_instance_id}}",
-          "refId": "A"
+          "expr": "sum by (k8s_pod_name) (rate(dotnet_gc_pause_time_seconds_total{k8s_pod_name=~\"$pod\"}[$__rate_interval]))",
+          "legendFormat": "{{k8s_pod_name}}",
+          "refId": "A",
+          "range": true,
+          "instant": false
         }
       ],
       "title": "GC Pause Time Rate",
@@ -1523,10 +1537,6 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           },
@@ -1540,7 +1550,7 @@
         "x": 16,
         "y": 32
       },
-      "id": null,
+      "id": 18,
       "options": {
         "legend": {
           "calcs": [],
@@ -1559,9 +1569,11 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "dotnet_process_memory_working_set_bytes{service_instance_id=~\"$pod\"}",
-          "legendFormat": "{{service_instance_id}}",
-          "refId": "A"
+          "expr": "dotnet_process_memory_working_set_bytes{k8s_pod_name=~\"$pod\"}",
+          "legendFormat": "{{k8s_pod_name}}",
+          "refId": "A",
+          "range": true,
+          "instant": false
         }
       ],
       "title": "Process Working Set",
@@ -1633,7 +1645,7 @@
         "x": 0,
         "y": 40
       },
-      "id": null,
+      "id": 19,
       "options": {
         "legend": {
           "calcs": [],
@@ -1652,9 +1664,11 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "dotnet_gc_last_collection_heap_size_bytes{service_instance_id=~\"$pod\"}",
-          "legendFormat": "{{service_instance_id}}",
-          "refId": "A"
+          "expr": "dotnet_gc_last_collection_heap_size_bytes{k8s_pod_name=~\"$pod\"}",
+          "legendFormat": "{{k8s_pod_name}}",
+          "refId": "A",
+          "range": true,
+          "instant": false
         }
       ],
       "title": "GC Heap Size",
@@ -1709,10 +1723,6 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           },
@@ -1726,7 +1736,7 @@
         "x": 8,
         "y": 40
       },
-      "id": null,
+      "id": 20,
       "options": {
         "legend": {
           "calcs": [],
@@ -1745,9 +1755,11 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "dotnet_thread_pool_thread_count{service_instance_id=~\"$pod\"}",
-          "legendFormat": "{{service_instance_id}}",
-          "refId": "A"
+          "expr": "dotnet_thread_pool_thread_count{k8s_pod_name=~\"$pod\"}",
+          "legendFormat": "{{k8s_pod_name}}",
+          "refId": "A",
+          "range": true,
+          "instant": false
         }
       ],
       "title": "Thread Pool Threads",
@@ -1802,10 +1814,6 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           },
@@ -1819,7 +1827,7 @@
         "x": 16,
         "y": 40
       },
-      "id": null,
+      "id": 21,
       "options": {
         "legend": {
           "calcs": [],
@@ -1838,9 +1846,11 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "dotnet_thread_pool_queue_length{service_instance_id=~\"$pod\"}",
-          "legendFormat": "{{service_instance_id}}",
-          "refId": "A"
+          "expr": "dotnet_thread_pool_queue_length{k8s_pod_name=~\"$pod\"}",
+          "legendFormat": "{{k8s_pod_name}}",
+          "refId": "A",
+          "range": true,
+          "instant": false
         }
       ],
       "title": "Thread Pool Queue Length",
@@ -1866,14 +1876,14 @@
           "type": "prometheus",
           "uid": "${DS_PROMETHEUS}"
         },
-        "definition": "label_values(snmp_event_published_total, service_instance_id)",
+        "definition": "label_values(snmp_event_published_total, k8s_pod_name)",
         "includeAll": true,
         "label": "Pod",
         "multi": true,
         "name": "pod",
         "query": {
           "qryType": 1,
-          "query": "label_values(snmp_event_published_total, service_instance_id)"
+          "query": "label_values(snmp_event_published_total, k8s_pod_name)"
         },
         "refresh": 2,
         "type": "query"
