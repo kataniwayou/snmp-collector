@@ -25,6 +25,9 @@ spec:
         - containerPort: 8080
           name: health
           protocol: TCP
+        - containerPort: 10162
+          name: snmp
+          protocol: UDP
         env:
         - name: ASPNETCORE_ENVIRONMENT
           value: Production
