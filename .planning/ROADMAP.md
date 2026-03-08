@@ -44,10 +44,10 @@ Plans:
   3. User sees an info metrics table with columns: service_instance_id, device_name, metric_name, oid, and value
   4. Tables auto-refresh to show live current values without manual page reload
   5. Adding a new device to the system automatically populates it in the tables (no dashboard edits needed)
-**Plans**: TBD
+**Plans:** 1 plan
 
 Plans:
-- [ ] 19-01: Business dashboard JSON (gauge metrics table, info metrics table, auto-refresh, device-agnostic queries)
+- [ ] 19-01-PLAN.md -- Create business dashboard JSON (gauge metrics table, info metrics table, device filter, auto-refresh)
 
 ## Progress
 
