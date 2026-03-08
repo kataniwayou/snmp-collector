@@ -1,5 +1,32 @@
 # Project Milestones: SNMP Monitoring System
 
+## v1.2 Operational Enhancements (Shipped: 2026-03-08)
+
+**Delivered:** K8s API watch for ConfigMap hot-reload with sub-second event delivery, DynamicPollScheduler for live device/poll reconfiguration, and full live UAT of 13 ConfigMap scenarios + watch reconnection against 3-replica cluster.
+
+**Phases completed:** 15-16 (8 plans total, 5 quick tasks)
+
+**Key accomplishments:**
+- K8s API watch replaces file-based hot-reload — sub-second ConfigMap change detection
+- Split OidMapWatcherService + DeviceWatcherService with independent reload locks
+- DynamicPollScheduler reconciles Quartz jobs on device config changes (add/remove/reschedule)
+- Full live UAT: 13 ConfigMap scenarios + watch reconnection verified against 3-replica cluster
+- Operational cleanup: SiteOptions→PodIdentityOptions, removed redundant host/pod tags, IsHeartbeat flag
+
+**Stats:**
+- 30 files modified (2,207 insertions, 131 deletions)
+- 4,937 LOC C# source + 4,318 LOC tests + 783 LOC Python simulators
+- 2 phases, 8 plans, 5 quick tasks
+- 1 day (2026-03-08)
+- 138 tests passing
+- 4/4 requirements satisfied
+
+**Git range:** `v1.1` → `v1.2`
+
+**What's next:** TBD — v2.0 planning (Grafana dashboards, SNMP table walk, alerting rules)
+
+---
+
 ## v1.1 Device Simulation (Shipped: 2026-03-08)
 
 **Delivered:** OID maps for OBP (24 OIDs) and NPB (68 OIDs) with JSONC documentation, realistic SNMP simulators with trap generation, and full K8s E2E integration with devices.json poll configuration.

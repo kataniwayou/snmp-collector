@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-08)
 
 **Core value:** Every SNMP OID — from a trap or a poll — gets resolved, typed correctly, and pushed to Prometheus where it's queryable in Grafana within seconds.
-**Current focus:** v1.2 Operational Enhancements — pending formal completion
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Phase: 16 (Test K8s ConfigMap Watchers)
-Plan: 3 of 3
-Status: Phase complete
-Last activity: 2026-03-08 — Completed 16-03-PLAN.md (Watch API reconnection verified, 4/4 requirements passed)
+Phase: None — between milestones
+Plan: N/A
+Status: v1.2 complete, ready for next milestone
+Last activity: 2026-03-08 — v1.2 Operational Enhancements milestone complete
 
-Progress: [####################] 48/48 v1.0, 10/10 v1.1, 5/5 v1.2, 3/3 Phase 16
+Progress: [####################] 48/48 v1.0, 10/10 v1.1, 8/8 v1.2
 
 ## Milestone History
 
@@ -22,6 +22,7 @@ Progress: [####################] 48/48 v1.0, 10/10 v1.1, 5/5 v1.2, 3/3 Phase 16
 |-----------|--------|-------|---------|
 | v1.0 Foundation | 1-10 | 48 | 2026-03-07 |
 | v1.1 Device Simulation | 11-14 | 10 | 2026-03-08 |
+| v1.2 Operational Enhancements | 15-16 | 8 | 2026-03-08 |
 
 See `.planning/MILESTONES.md` for details.
 See `.planning/milestones/` for archived roadmaps and requirements.
@@ -38,22 +39,17 @@ See `.planning/milestones/` for archived roadmaps and requirements.
 - IsHeartbeat bool flag set at ingestion boundary (ChannelConsumerService); behaviors/handlers use flag, not string comparison
 - Split config: simetra-oidmaps ConfigMap (oidmaps.json bare dict) + simetra-devices ConfigMap (devices.json bare array) + simetra-config (appsettings only)
 - OID map naming: obp_{metric}_L{linkNum} for OBP, npb_{metric} / npb_port_{metric}_P{n} for NPB
-- Config auto-scan: CONFIG_DIRECTORY env var with ContentRootPath/config fallback
 - K8s directory mount at /app/config (no subPath) enables ConfigMap hot-reload
 - DeviceRegistry resolves K8s Service DNS names at startup via Dns.GetHostAddresses fallback
 - OidMapService decoupled from IOptionsMonitor; accepts Dictionary + supports UpdateMap atomic swap
 - DeviceRegistry supports ReloadAsync with async DNS and volatile FrozenDictionary swap
-- JobIntervalRegistry.Unregister and LivenessVectorService.Remove for cleanup on config reload
 - OidMapWatcherService watches simetra-oidmaps ConfigMap, calls UpdateMap only (no device/scheduler deps)
 - DeviceWatcherService watches simetra-devices ConfigMap, calls ReloadAsync + ReconcileAsync only (no OID map dep)
-- DeviceOptions.CommunityString optional override; null falls back to Simetra.{Name} convention
-- DynamicPollScheduler registered in both K8s and local dev modes for symmetric ReconcileAsync
-- Thread pool ceiling of 50 (generous headroom for dynamic device additions at runtime)
-- Program.cs local dev loads oidmaps.json (bare dict) and devices.json (bare array) independently
-- RBAC Role named simetra-role covers leases + configmaps (renamed from simetra-lease-role)
 - DynamicPollScheduler.ReconcileAsync diffs Quartz metric-poll-* jobs and adds/removes/reschedules
 - K8s deployments use projected volume combining simetra-config, simetra-oidmaps, simetra-devices into /app/config
 - Each watcher has independent SemaphoreSlim reload lock (no cascading reloads)
+- RBAC Role named simetra-role covers leases + configmaps
+- PodIdentityOptions (renamed from SiteOptions) with PodIdentity property for K8sLeaseElection
 
 ### Known Tech Debt
 
@@ -77,5 +73,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-08
-Stopped at: Completed 16-03-PLAN.md (Watch API reconnection verified — Phase 16 complete)
+Stopped at: v1.2 milestone complete
 Resume file: None

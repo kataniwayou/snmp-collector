@@ -41,14 +41,15 @@ See `.planning/milestones/v1.0-REQUIREMENTS.md` for full requirement details.
 
 See `.planning/milestones/v1.1-REQUIREMENTS.md` for full requirement details.
 
-### Active
+**v1.2 Operational Enhancements (shipped 2026-03-08)**
 
-**v1.2 Operational Enhancements (shipped 2026-03-07)**
-
-- K8s API watch for ConfigMap changes with runtime reload (replaces file-based hot-reload)
+- K8s API watch for ConfigMap changes with sub-second event delivery (replaces file-based hot-reload)
 - Split ConfigMap architecture: simetra-oidmaps + simetra-devices + snmp-collector-config
-- Dynamic device/poll schedule reloading without pod restart (Quartz jobs re-registered)
+- Dynamic device/poll schedule reloading without pod restart (DynamicPollScheduler reconciles Quartz jobs)
 - Local development fallback with file-based loading
+- Live UAT verified: 13 ConfigMap scenarios + watch reconnection against 3-replica cluster
+
+See `.planning/milestones/v1.2-REQUIREMENTS.md` for full requirement details.
 
 ### Out of Scope
 
@@ -63,7 +64,7 @@ See `.planning/milestones/v1.1-REQUIREMENTS.md` for full requirement details.
 
 ## Context
 
-**Current state:** v1.1 shipped. 4,937 LOC source + 4,318 LOC tests across 108 C# files + 783 LOC Python simulators. 138 tests passing. Running in Docker Desktop K8s cluster (3 replicas) with OTel Collector + Prometheus + Grafana. v1.2 also shipped (Phase 15: K8s ConfigMap watch).
+**Current state:** v1.2 shipped. 4,937 LOC source + 4,318 LOC tests across 76 C# files + 783 LOC Python simulators. 138 tests passing. Running in Docker Desktop K8s cluster (3 replicas) with OTel Collector + Prometheus + Grafana. K8s API watch for live ConfigMap reload verified.
 
 **Reference project:** `src/Simetra/` is an existing SNMP monitoring system used as architectural reference. Key patterns adopted: structured logging, OTel setup, console formatter, correlation IDs, leader election, role-gated export. Key patterns replaced: custom middleware -> MediatR, device modules -> flat OID map, channels -> single shared trap channel.
 
@@ -72,8 +73,6 @@ See `.planning/milestones/v1.1-REQUIREMENTS.md` for full requirement details.
 **Known tech debt:**
 - `IDeviceRegistry.TryGetDevice(IPAddress)` orphaned (community string replaced IP lookup)
 - `PollSchedulerStartupService` thread pool log off-by-one (HeartbeatJob not counted)
-- verify-e2e.sh check 4 queries wrong instrument (snmp_gauge vs snmp_info for OctetString)
-- Production simetra-devices template has wrong MetricPolls schema
 
 ## Constraints
 
@@ -106,6 +105,9 @@ See `.planning/milestones/v1.1-REQUIREMENTS.md` for full requirement details.
 | Single shared oidmaps.json | Both device types in one file; simpler K8s ConfigMap management | Good |
 | DNS resolution in DeviceRegistry | K8s Service DNS names resolved at startup; MetricPollJob uses pre-resolved IPs | Good |
 | Split ConfigMap watchers | OidMapWatcherService and DeviceWatcherService independent; no cascading reloads | Good |
+| K8s API watch over projected volume | Sub-second event delivery vs 60-120s kubelet sync; direct ConfigMap read | Good |
+| DynamicPollScheduler in both modes | Symmetric ReconcileAsync for K8s and local dev; avoids code path divergence | Good |
+| PodIdentityOptions rename | Clearer than SiteOptions; section name "PodIdentity" matches single property | Good |
 
 ---
-*Last updated: 2026-03-08 after v1.1 milestone completion*
+*Last updated: 2026-03-08 after v1.2 milestone completion*
