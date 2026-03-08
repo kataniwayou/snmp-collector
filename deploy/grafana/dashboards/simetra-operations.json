@@ -1800,7 +1800,7 @@
         },
         "definition": "label_values(snmp_event_published_total, service_instance_id)",
         "includeAll": true,
-        "label": "Host Name",
+        "label": "Host",
         "multi": true,
         "name": "host",
         "query": {

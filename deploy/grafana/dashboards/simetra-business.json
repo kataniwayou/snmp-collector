@@ -164,6 +164,18 @@
           {
             "matcher": {
               "id": "byName",
+              "options": "service_name"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
               "options": "service_instance_id"
             },
             "properties": [
@@ -435,6 +447,18 @@
             "matcher": {
               "id": "byName",
               "options": "instance"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "service_name"
             },
             "properties": [
               {
