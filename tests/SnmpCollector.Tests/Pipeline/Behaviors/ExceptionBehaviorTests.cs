@@ -21,7 +21,7 @@ public sealed class ExceptionBehaviorTests : IDisposable
     {
         var services = new ServiceCollection();
         services.AddMetrics();
-        services.AddSingleton(Options.Create(new SiteOptions { Name = "test-site" }));
+        services.AddSingleton(Options.Create(new PodIdentityOptions { PodIdentity = "test-pod" }));
         services.AddSingleton<PipelineMetricService>();
         _sp = services.BuildServiceProvider();
         _metrics = _sp.GetRequiredService<PipelineMetricService>();

@@ -50,7 +50,7 @@ public sealed class PipelineIntegrationTests : IDisposable
             b.SetMinimumLevel(LogLevel.Debug);
         });
 
-        services.AddSingleton(Options.Create(new SiteOptions { Name = "test-site" }));
+        services.AddSingleton(Options.Create(new PodIdentityOptions { PodIdentity = "test-pod" }));
         services.AddSingleton(Options.Create(new DevicesOptions
         {
             Devices =
@@ -169,7 +169,7 @@ public sealed class PipelineIntegrationTests : IDisposable
         var services = new ServiceCollection();
         services.AddMetrics();
         services.AddLogging(b => b.SetMinimumLevel(LogLevel.Debug));
-        services.AddSingleton(Options.Create(new SiteOptions { Name = "test-site" }));
+        services.AddSingleton(Options.Create(new PodIdentityOptions { PodIdentity = "test-pod" }));
         services.AddSingleton(Options.Create(new DevicesOptions()));
         services.AddSingleton<IDeviceRegistry, DeviceRegistry>();
         services.AddSingleton<OidMapService>(sp =>

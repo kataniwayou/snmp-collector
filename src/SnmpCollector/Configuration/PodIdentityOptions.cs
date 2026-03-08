@@ -1,17 +1,11 @@
 namespace SnmpCollector.Configuration;
 
 /// <summary>
-/// Site identification configuration. Bound from "Site" section.
+/// Pod identity configuration. Bound from "PodIdentity" section.
 /// </summary>
-public sealed class SiteOptions
+public sealed class PodIdentityOptions
 {
-    public const string SectionName = "Site";
-
-    /// <summary>
-    /// Optional site name identifier (e.g., "site-nyc-01").
-    /// Used as the site_name label on OTel metrics when provided.
-    /// </summary>
-    public string? Name { get; set; }
+    public const string SectionName = "PodIdentity";
 
     /// <summary>
     /// Pod identity for Kubernetes lease holder identification.

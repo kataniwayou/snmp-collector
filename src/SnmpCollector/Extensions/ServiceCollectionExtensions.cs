@@ -158,7 +158,7 @@ public static class ServiceCollectionExtensions
     /// Binds all Phase 1 and Phase 2 options classes with fail-fast configuration validation,
     /// and registers Phase 2 pipeline singletons (DeviceRegistry, OidMapService).
     /// <para>
-    /// Phase 1 options: SiteOptions, OtlpOptions, LoggingOptions, CorrelationJobOptions.
+    /// Phase 1 options: PodIdentityOptions, OtlpOptions, LoggingOptions, CorrelationJobOptions.
     /// Phase 2 options: DevicesOptions, SnmpListenerOptions, OidMapOptions.
     /// Phase 2 services: IDeviceRegistry (DeviceRegistry), IOidMapService (OidMapService).
     /// </para>
@@ -177,8 +177,8 @@ public static class ServiceCollectionExtensions
         IConfiguration configuration)
     {
         // --- Phase 1 options ---
-        services.AddOptions<SiteOptions>()
-            .Bind(configuration.GetSection(SiteOptions.SectionName))
+        services.AddOptions<PodIdentityOptions>()
+            .Bind(configuration.GetSection(PodIdentityOptions.SectionName))
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
@@ -203,7 +203,7 @@ public static class ServiceCollectionExtensions
             .ValidateOnStart();
 
         // Custom IValidateOptions for cross-field validation (Phase 1)
-        services.AddSingleton<IValidateOptions<SiteOptions>, SiteOptionsValidator>();
+        services.AddSingleton<IValidateOptions<PodIdentityOptions>, PodIdentityOptionsValidator>();
         services.AddSingleton<IValidateOptions<OtlpOptions>, OtlpOptionsValidator>();
 
         // --- Phase 7: Leader election ---
@@ -242,9 +242,9 @@ public static class ServiceCollectionExtensions
             services.AddSingleton<ILeaderElection, AlwaysLeaderElection>();
         }
 
-        // Phase 7: SiteOptions.PodIdentity defaults to HOSTNAME env var (K8s pod name),
+        // Phase 7: PodIdentityOptions.PodIdentity defaults to HOSTNAME env var (K8s pod name),
         // falling back to machine name for local dev.
-        services.PostConfigure<SiteOptions>(options =>
+        services.PostConfigure<PodIdentityOptions>(options =>
         {
             options.PodIdentity ??= Environment.GetEnvironmentVariable("HOSTNAME")
                 ?? Environment.MachineName;

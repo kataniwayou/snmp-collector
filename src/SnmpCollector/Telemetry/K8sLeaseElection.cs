@@ -22,7 +22,7 @@ namespace SnmpCollector.Telemetry;
 public sealed class K8sLeaseElection : BackgroundService, ILeaderElection
 {
     private readonly LeaseOptions _leaseOptions;
-    private readonly SiteOptions _siteOptions;
+    private readonly PodIdentityOptions _podIdentityOptions;
     private readonly IKubernetes _kubeClient;
     private readonly IHostApplicationLifetime _lifetime;
     private readonly ILogger<K8sLeaseElection> _logger;
@@ -37,19 +37,19 @@ public sealed class K8sLeaseElection : BackgroundService, ILeaderElection
     /// Initializes a new instance of <see cref="K8sLeaseElection"/>.
     /// </summary>
     /// <param name="leaseOptions">Lease configuration (name, namespace, durations).</param>
-    /// <param name="siteOptions">Site configuration (pod identity).</param>
+    /// <param name="podIdentityOptions">Pod identity configuration.</param>
     /// <param name="kubeClient">Kubernetes API client for lease operations.</param>
     /// <param name="lifetime">Application lifetime for shutdown coordination.</param>
     /// <param name="logger">Logger for leadership state changes.</param>
     public K8sLeaseElection(
         IOptions<LeaseOptions> leaseOptions,
-        IOptions<SiteOptions> siteOptions,
+        IOptions<PodIdentityOptions> podIdentityOptions,
         IKubernetes kubeClient,
         IHostApplicationLifetime lifetime,
         ILogger<K8sLeaseElection> logger)
     {
         _leaseOptions = leaseOptions?.Value ?? throw new ArgumentNullException(nameof(leaseOptions));
-        _siteOptions = siteOptions?.Value ?? throw new ArgumentNullException(nameof(siteOptions));
+        _podIdentityOptions = podIdentityOptions?.Value ?? throw new ArgumentNullException(nameof(podIdentityOptions));
         _kubeClient = kubeClient ?? throw new ArgumentNullException(nameof(kubeClient));
         _lifetime = lifetime ?? throw new ArgumentNullException(nameof(lifetime));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -68,7 +68,7 @@ public sealed class K8sLeaseElection : BackgroundService, ILeaderElection
     /// </summary>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var identity = _siteOptions.PodIdentity ?? Environment.MachineName;
+        var identity = _podIdentityOptions.PodIdentity ?? Environment.MachineName;
 
         var leaseLock = new LeaseLock(
             _kubeClient,
