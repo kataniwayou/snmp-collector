@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-03-07)
 Phase: 15 (K8s ConfigMap Watch and Unified Config)
 Plan: 5 of 5
 Status: Complete
-Last activity: 2026-03-07 — Completed quick task 017: Split ConfigMap into OidMap + Devices watchers
+Last activity: 2026-03-08 — Completed quick task 018: Add IsHeartbeat flag to pipeline
 
 Progress: [####################] 48/48 v1.0 complete, 9/9 v1.1 plans, 5/5 v1.2 plans
 
@@ -35,6 +35,7 @@ See `.planning/milestones/` for archived roadmaps and requirements.
 - Community string convention: Simetra.{DeviceName} for both auth and device identity
 - host_name from NODE_NAME env var (K8s spec.nodeName), pod_name from HOSTNAME
 - Heartbeat is internal infrastructure — pipeline metrics prove liveness, no metric export
+- IsHeartbeat bool flag set at ingestion boundary (ChannelConsumerService); behaviors/handlers use flag, not string comparison
 - Split config: simetra-oidmaps ConfigMap (oidmaps.json bare dict) + simetra-devices ConfigMap (devices.json bare array) + simetra-config (appsettings only)
 - OID map naming: obp_{metric}_L{linkNum} for OBP, npb_{metric} / npb_port_{metric}_P{n} for NPB
 - Config auto-scan: CONFIG_DIRECTORY env var with ContentRootPath/config fallback
@@ -64,6 +65,7 @@ See `.planning/milestones/` for archived roadmaps and requirements.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 017 | Split unified ConfigMap into separate OID map and devices watchers | 2026-03-07 | 2377154 | [017-split-configmap-oidmap-devices](./quick/017-split-configmap-oidmap-devices/) |
+| 018 | Add IsHeartbeat flag to pipeline (replace string comparisons) | 2026-03-08 | 5d0f980 | [018-add-isheartbeat-flag-to-pipeline](./quick/018-add-isheartbeat-flag-to-pipeline/) |
 
 ### Blockers/Concerns
 
@@ -72,5 +74,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-08
-Stopped at: Quick task 017 complete
+Stopped at: Quick task 018 complete
 Resume file: None
