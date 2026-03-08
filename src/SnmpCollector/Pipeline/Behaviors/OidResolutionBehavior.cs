@@ -32,12 +32,19 @@ public sealed class OidResolutionBehavior<TNotification, TResponse>
     {
         if (notification is SnmpOidReceived msg)
         {
-            msg.MetricName = _oidMapService.Resolve(msg.Oid);
-
-            if (msg.MetricName == OidMapService.Unknown)
-                _logger.LogDebug("OID {Oid} not found in OidMap", msg.Oid);
+            if (msg.IsHeartbeat)
+            {
+                _logger.LogDebug("Heartbeat message — skipping OID resolution");
+            }
             else
-                _logger.LogDebug("OID {Oid} resolved to {MetricName}", msg.Oid, msg.MetricName);
+            {
+                msg.MetricName = _oidMapService.Resolve(msg.Oid);
+
+                if (msg.MetricName == OidMapService.Unknown)
+                    _logger.LogDebug("OID {Oid} not found in OidMap", msg.Oid);
+                else
+                    _logger.LogDebug("OID {Oid} resolved to {MetricName}", msg.Oid, msg.MetricName);
+            }
         }
 
         return await next();
