@@ -6,7 +6,7 @@
 <domain>
 ## Phase Boundary
 
-Set up Grafana's file-based provisioning so the Prometheus datasource and dashboard JSON files load on Grafana startup. Manual deployment via kubectl apply — no automated ConfigMap watchers or controllers. Dashboard JSON files created in Phases 18-19; this phase only builds the provisioning infrastructure.
+Set up Grafana's file-based provisioning so the Prometheus datasource and dashboard JSON files load on Grafana startup. Manual deployment via kubectl apply — no automated ConfigMap watchers or controllers. Dashboard JSON files will be created manually by the user — Claude sets up the provisioning infrastructure and Grafana deployment wiring only.
 
 </domain>
 
@@ -23,6 +23,11 @@ Set up Grafana's file-based provisioning so the Prometheus datasource and dashbo
 - Grafana file-based provisioning (provisioning YAMLs point to dashboard directory)
 - Datasource and dashboard provider configs mounted into Grafana container
 
+### Dashboard JSON authoring
+- User creates dashboard JSON files manually — Claude does NOT generate dashboard JSON
+- Phases 18 and 19 are user-driven: user builds simetra-operations and simetra-business dashboards by hand
+- Claude's role in Phase 17: provisioning infrastructure, datasource config, Grafana deployment wiring
+
 ### Dashboard lifecycle
 - Dashboards deployed as files, loaded by Grafana on startup
 - Updates require kubectl apply + Grafana pod restart (or rolling restart)
@@ -38,8 +43,8 @@ Set up Grafana's file-based provisioning so the Prometheus datasource and dashbo
 <specifics>
 ## Specific Ideas
 
-- Two dashboards will be created in later phases: simetra-operations (Phase 18) and simetra-business (Phase 19)
-- This phase should leave placeholder or empty dashboard directory ready for those phases
+- User will manually create two dashboards: simetra-operations (Phase 18) and simetra-business (Phase 19)
+- This phase should leave the dashboard directory ready for the user to drop JSON files into
 
 </specifics>
 
