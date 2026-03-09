@@ -1,0 +1,70 @@
+# =============================================================================
+# Grafana Visualization UI -- Deployment
+# =============================================================================
+# Provides the Grafana dashboard UI for operators to view Simetra metrics.
+#
+# NodePort service already exists in service-nodeports.yaml (30030/TCP).
+# Operator accesses Grafana at http://<minikube-ip>:30030.
+#
+# Post-deployment setup (performed manually by operator via Grafana UI):
+#   1. Add Prometheus datasource: URL http://prometheus:9090
+#   2. Import dashboard JSONs from deploy/grafana/dashboards/
+#      - simetra-operations.json
+#      - simetra-business.json
+#
+# Default credentials: admin / admin (Grafana built-in default).
+#
+# Usage:
+#   kubectl apply -f deploy/k8s/production/grafana.yaml
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: simetra
+  labels:
+    app: grafana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      securityContext:
+        fsGroup: 472
+        supplementalGroups:
+        - 0
+      containers:
+      - name: grafana
+        image: grafana/grafana:11.6.11
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 3000
+          name: http
+          protocol: TCP
+        readinessProbe:
+          httpGet:
+            path: /robots.txt
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          failureThreshold: 3
+          timeoutSeconds: 2
+        livenessProbe:
+          tcpSocket:
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          failureThreshold: 3
+          timeoutSeconds: 1
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
