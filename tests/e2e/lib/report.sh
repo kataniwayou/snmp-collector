@@ -8,10 +8,10 @@ set -euo pipefail
 # Category definitions: name, start_index (0-based), end_index (inclusive)
 _REPORT_CATEGORIES=(
     "Pipeline Counters|0|9"
-    "Business Metrics|10|16"
-    "OID Mutations|17|19"
-    "Device Lifecycle|20|22"
-    "Watcher Resilience|23|26"
+    "Business Metrics|10|22"
+    "OID Mutations|23|25"
+    "Device Lifecycle|26|28"
+    "Watcher Resilience|29|32"
 )
 
 generate_report() {
