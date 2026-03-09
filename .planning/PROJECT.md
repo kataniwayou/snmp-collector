@@ -51,14 +51,15 @@ See `.planning/milestones/v1.1-REQUIREMENTS.md` for full requirement details.
 
 See `.planning/milestones/v1.2-REQUIREMENTS.md` for full requirement details.
 
+**v1.3 Grafana Dashboards (shipped 2026-03-09)**
+
+- Operations dashboard JSON: pod identity/role table, 11 pipeline counter time series, 6 .NET runtime time series, per-pod host filter, auto-refresh 5s
+- Business dashboard JSON: gauge and info metric tables with cascading Host/Pod/Device filters, Trend column with delta arrows, PromQL column with copyable queries
+- Dashboard JSON files created by Claude, imported manually by user via Grafana UI
+
 ### Active
 
-**v1.3 Grafana Dashboards**
-
-- [ ] Grafana dashboard provisioning via JSON ConfigMaps with automatic loading
-- [ ] Prometheus datasource provisioned automatically
-- [ ] Operations dashboard: pod identity/role table, pipeline counter time series, .NET runtime time series, per-pod breakdown, auto-refresh
-- [ ] Business dashboard: gauge metrics table and info metrics table with label columns (service_instance_id, device_name, metric_name, oid, snmp_type, value), device-agnostic, auto-refresh
+(None — next milestone not yet planned)
 
 ### Out of Scope
 
@@ -73,7 +74,7 @@ See `.planning/milestones/v1.2-REQUIREMENTS.md` for full requirement details.
 
 ## Context
 
-**Current state:** v1.2 shipped, v1.3 in progress. 4,937 LOC source + 4,318 LOC tests across 76 C# files + 783 LOC Python simulators. 138 tests passing. Running in Docker Desktop K8s cluster (3 replicas) with OTel Collector + Prometheus + Grafana. K8s API watch for live ConfigMap reload verified. Single Prometheus instance serves multiple sites via service_instance_id label.
+**Current state:** v1.3 shipped. 4,937 LOC source + 4,318 LOC tests across 76 C# files + 783 LOC Python simulators. 138 tests passing. Running in Docker Desktop K8s cluster (3 replicas) with OTel Collector + Prometheus + Grafana. K8s API watch for live ConfigMap reload verified. Two Grafana dashboards shipped: operations (pipeline health) and business (SNMP metric tables). Single Prometheus instance serves multiple sites via service_instance_id label.
 
 **Reference project:** `src/Simetra/` is an existing SNMP monitoring system used as architectural reference. Key patterns adopted: structured logging, OTel setup, console formatter, correlation IDs, leader election, role-gated export. Key patterns replaced: custom middleware -> MediatR, device modules -> flat OID map, channels -> single shared trap channel.
 
@@ -117,6 +118,11 @@ See `.planning/milestones/v1.2-REQUIREMENTS.md` for full requirement details.
 | K8s API watch over projected volume | Sub-second event delivery vs 60-120s kubelet sync; direct ConfigMap read | Good |
 | DynamicPollScheduler in both modes | Symmetric ReconcileAsync for K8s and local dev; avoids code path divergence | Good |
 | PodIdentityOptions rename | Clearer than SiteOptions; section name "PodIdentity" matches single property | Good |
+| Dashboard JSON manual import | No K8s provisioning; user imports via Grafana UI for simplicity | Good |
+| Two dashboards (ops + business) | Separation of concerns: ops for pipeline health, business for SNMP metrics | Good |
+| Trend column over per-row coloring | Grafana configFromData is field-level not per-row; delta arrows are the viable approach | Good |
+| PromQL column with label_replace | Copyable query strings per row via label_join+label_replace with backtick raw strings | Good |
+| Cascading Host/Pod/Device filters | Three-level filter for multi-pod multi-device environments | Good |
 
 ---
-*Last updated: 2026-03-08 after v1.3 milestone start*
+*Last updated: 2026-03-09 after v1.3 milestone complete*

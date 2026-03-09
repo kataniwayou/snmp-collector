@@ -1,5 +1,32 @@
 # Project Milestones: SNMP Monitoring System
 
+## v1.3 Grafana Dashboards (Shipped: 2026-03-09)
+
+**Delivered:** Two purpose-built Grafana dashboard JSON files — an operations dashboard for pipeline health and pod observability, and a business dashboard with device-agnostic gauge and info metric tables with cascading filters, trend arrows, and copyable PromQL columns.
+
+**Phases completed:** 18-19 (2 plans total, 9 quick tasks)
+
+**Key accomplishments:**
+- Operations dashboard: pod identity table, 11 pipeline counter panels, 6 .NET runtime panels, all filtered by host
+- Business dashboard: gauge and info metric tables with 3 cascading filters (Host->Pod->Device)
+- Trend column with delta-driven colored arrows showing value changes
+- PromQL column with copyable query strings including host/pod labels
+- Cell inspect enabled for full content viewing
+- 9 quick tasks for iterative dashboard refinements
+
+**Stats:**
+- 53 files changed (7,379 insertions, 355 deletions)
+- 2 phases, 2 plans, 9 quick tasks
+- 2 days (2026-03-08 → 2026-03-09)
+- 10/10 requirements satisfied
+- 5/5 E2E flows verified
+
+**Git range:** `v1.2` → `v1.3`
+
+**What's next:** TBD — next milestone planning
+
+---
+
 ## v1.2 Operational Enhancements (Shipped: 2026-03-08)
 
 **Delivered:** K8s API watch for ConfigMap hot-reload with sub-second event delivery, DynamicPollScheduler for live device/poll reconfiguration, and full live UAT of 13 ConfigMap scenarios + watch reconnection against 3-replica cluster.
