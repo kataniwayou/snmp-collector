@@ -48,42 +48,6 @@ public sealed class DeviceRegistryTests
     }
 
     [Fact]
-    public void TryGetDevice_KnownIp_ReturnsDevice()
-    {
-        var sut = CreateRegistry();
-
-        var found = sut.TryGetDevice(IPAddress.Parse("10.0.10.1"), out var device);
-
-        Assert.True(found);
-        Assert.NotNull(device);
-        Assert.Equal("npb-core-01", device.Name);
-    }
-
-    [Fact]
-    public void TryGetDevice_Ipv6Mapped_ReturnsDevice()
-    {
-        var sut = CreateRegistry();
-
-        // IPv6-mapped IPv4 address should normalize to the IPv4 address
-        var found = sut.TryGetDevice(IPAddress.Parse("::ffff:10.0.10.1"), out var device);
-
-        Assert.True(found);
-        Assert.NotNull(device);
-        Assert.Equal("npb-core-01", device.Name);
-    }
-
-    [Fact]
-    public void TryGetDevice_UnknownIp_ReturnsFalse()
-    {
-        var sut = CreateRegistry();
-
-        var found = sut.TryGetDevice(IPAddress.Parse("192.168.99.99"), out var device);
-
-        Assert.False(found);
-        Assert.Null(device);
-    }
-
-    [Fact]
     public void TryGetDeviceByName_ExactMatch_ReturnsDevice()
     {
         var sut = CreateRegistry();

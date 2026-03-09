@@ -9,14 +9,13 @@ using SnmpCollector.Configuration;
 namespace SnmpCollector.Pipeline;
 
 /// <summary>
-/// Singleton registry that maps normalized IPv4 addresses and device names to
-/// <see cref="DeviceInfo"/> for O(1) device lookup. Supports runtime reload via
-/// <see cref="ReloadAsync"/> with atomic <see cref="FrozenDictionary{TKey,TValue}"/> swap.
+/// Singleton registry that maps device names to <see cref="DeviceInfo"/> for O(1)
+/// device lookup. Supports runtime reload via <see cref="ReloadAsync"/> with atomic
+/// <see cref="FrozenDictionary{TKey,TValue}"/> swap.
 /// </summary>
 public sealed class DeviceRegistry : IDeviceRegistry
 {
     private readonly ILogger<DeviceRegistry> _logger;
-    private volatile FrozenDictionary<IPAddress, DeviceInfo> _byIp;
     private volatile FrozenDictionary<string, DeviceInfo> _byName;
 
     /// <summary>
@@ -32,7 +31,6 @@ public sealed class DeviceRegistry : IDeviceRegistry
         _logger = logger;
         var devices = devicesOptions.Value.Devices;
 
-        var byIpBuilder = new Dictionary<IPAddress, DeviceInfo>(devices.Count);
         var byNameBuilder = new Dictionary<string, DeviceInfo>(devices.Count, StringComparer.OrdinalIgnoreCase);
 
         foreach (var d in devices)
@@ -58,18 +56,10 @@ public sealed class DeviceRegistry : IDeviceRegistry
                 .AsReadOnly();
 
             var info = new DeviceInfo(d.Name, ip.ToString(), d.Port, pollGroups, d.CommunityString);
-            byIpBuilder[ip] = info;
             byNameBuilder[info.Name] = info;
         }
 
-        _byIp = byIpBuilder.ToFrozenDictionary();
         _byName = byNameBuilder.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
-    }
-
-    /// <inheritdoc />
-    public bool TryGetDevice(IPAddress senderIp, [NotNullWhen(true)] out DeviceInfo? device)
-    {
-        return _byIp.TryGetValue(senderIp.MapToIPv4(), out device);
     }
 
     /// <inheritdoc />
@@ -86,7 +76,6 @@ public sealed class DeviceRegistry : IDeviceRegistry
     {
         var oldNames = new HashSet<string>(_byName.Keys, StringComparer.OrdinalIgnoreCase);
 
-        var byIpBuilder = new Dictionary<IPAddress, DeviceInfo>(devices.Count);
         var byNameBuilder = new Dictionary<string, DeviceInfo>(devices.Count, StringComparer.OrdinalIgnoreCase);
 
         foreach (var d in devices)
@@ -112,15 +101,12 @@ public sealed class DeviceRegistry : IDeviceRegistry
                 .AsReadOnly();
 
             var info = new DeviceInfo(d.Name, ip.ToString(), d.Port, pollGroups, d.CommunityString);
-            byIpBuilder[ip] = info;
             byNameBuilder[info.Name] = info;
         }
 
-        var newByIp = byIpBuilder.ToFrozenDictionary();
         var newByName = byNameBuilder.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
-        // Atomic swap -- volatile writes ensure all readers see the new dictionaries
-        _byIp = newByIp;
+        // Atomic swap -- volatile write ensures all readers see the new dictionary
         _byName = newByName;
 
         var newNames = new HashSet<string>(newByName.Keys, StringComparer.OrdinalIgnoreCase);

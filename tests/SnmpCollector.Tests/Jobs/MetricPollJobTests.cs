@@ -375,13 +375,6 @@ public sealed class MetricPollJobTests : IDisposable
 
         public IReadOnlyList<DeviceInfo> AllDevices => _devices;
 
-        public bool TryGetDevice(IPAddress senderIp, [NotNullWhen(true)] out DeviceInfo? device)
-        {
-            device = _devices.FirstOrDefault(d =>
-                IPAddress.Parse(d.IpAddress).MapToIPv4().Equals(senderIp.MapToIPv4()));
-            return device is not null;
-        }
-
         public bool TryGetDeviceByName(string deviceName, [NotNullWhen(true)] out DeviceInfo? device)
         {
             device = _devices.FirstOrDefault(d =>
