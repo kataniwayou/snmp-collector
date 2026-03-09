@@ -80,9 +80,7 @@ See `.planning/milestones/v1.2-REQUIREMENTS.md` for full requirement details.
 
 **Target devices:** NPB (Network Packet Broker, CGS enterprise 47477.100) and OBP (Optical Bypass, CGS enterprise 47477.10.21). Both share a single oidmaps.json (92 entries).
 
-**Known tech debt:**
-- `IDeviceRegistry.TryGetDevice(IPAddress)` orphaned (community string replaced IP lookup)
-- `PollSchedulerStartupService` thread pool log off-by-one (HeartbeatJob not counted)
+**Known tech debt:** None (cleaned up in quick-036)
 
 ## Constraints
 
