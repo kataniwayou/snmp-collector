@@ -1,271 +1,368 @@
-# Pitfalls Research
+# Domain Pitfalls
 
-**Domain:** SNMP monitoring system — C# .NET 9, MediatR, Quartz.NET, OTel push to Prometheus/Grafana
-**Researched:** 2026-03-04
-**Confidence:** HIGH (verified via official docs, Cisco RFC references, OTel official docs, Quartz.NET docs, SharpSnmpLib docs)
+**Domain:** E2E system verification for SNMP monitoring pipeline (OTel push to Prometheus via remote write)
+**Researched:** 2026-03-09
+**Confidence:** HIGH (verified against system source code, OTel SDK configuration, Prometheus remote write spec, K8s API watch behavior)
 
 ---
 
 ## Critical Pitfalls
 
-### Pitfall 1: Counter32/Counter64 Wrap-Around Treated as Real Spike
+Mistakes that produce false pass/fail results or make the test suite unreliable.
+
+### Pitfall 1: OTel Export Interval Creates a 15-Second Blind Spot
 
 **What goes wrong:**
-When a Counter32 reaches its maximum value (4,294,967,295) it rolls over to zero. If your delta computation does `current - previous` without checking for wrap-around, you get a negative number. Naive implementations discard this as invalid or emit it as a massive positive spike (via unsigned arithmetic overflow). On a 1 Gbps link, Counter32 wraps in ~34 seconds, meaning this can happen multiple times per polling cycle.
+Tests query Prometheus immediately after triggering a simulator action (trap, config change) and find no data. The test reports a failure that is actually a timing issue. The SnmpCollector uses a `PeriodicExportingMetricReader` with `exportIntervalMilliseconds: 15_000`. After a metric is recorded in the OTel SDK, it will not be pushed to the OTel Collector until the next 15-second export cycle. Add the OTel Collector's own batching/flush interval and you get a worst-case latency of ~16-18 seconds from metric record to Prometheus queryability.
 
 **Why it happens:**
-Developers treat SNMP counter values like regular integers. The RFC1155 wrap-around behavior is not obvious, and high-speed interfaces make it a frequent event rather than a rare edge case.
+Developers think "metric was recorded" means "metric is in Prometheus." The push path is: App SDK (15s batch) -> OTel Collector (OTLP receiver) -> prometheusremotewrite exporter -> Prometheus. Each hop adds latency.
 
-**How to avoid:**
-Always apply the SNMP delta formula:
-- If `current >= previous`: delta = `current - previous`
-- If `current < previous` AND difference is within plausible range: delta = `(MAX_VALUE - previous) + current + 1`
-- If `current < previous` AND difference is implausibly large (device reboot): discard the sample (see Pitfall 2)
+**Consequences:**
+- False negatives: tests fail because they query too early
+- Flaky tests: sometimes the export aligns with the query, sometimes it doesn't
+- Over-engineering: developers add 60-second sleeps everywhere "just in case"
 
-Use Counter64 (ifHCInOctets, ifHCOutOctets) where the device supports it — Counter64 wraps in years at 10 Gbps. Note: Counter64 requires SNMPv2c or SNMPv3; SNMPv1 does not support it.
+**Prevention:**
+Use a **poll-until-satisfied** pattern with a maximum timeout rather than fixed sleeps:
+```
+Wait up to 30 seconds, polling Prometheus every 3 seconds, until the expected metric appears.
+If 30 seconds pass without match, report failure with the last query result for diagnosis.
+```
+The 30-second ceiling is derived from: 15s max export interval + 5s OTel Collector flush margin + 10s safety buffer. For counter metrics (cumulative), wait for the value to be >= expected, not == expected, since additional increments may arrive between checks.
 
-**Warning signs:**
-- Graphs showing unexplained rate spikes of billions of units
-- Negative delta values logged then silently discarded
-- Zero-value samples immediately following a spike
+**Detection:**
+- Tests that pass locally but fail in CI (different timing)
+- Tests that pass when run individually but fail in batch (export cycle alignment shifts)
+- Hardcoded `sleep(60)` calls in test code
 
-**Phase to address:**
-Counter delta engine implementation phase — establish the wrap-aware delta formula before any metric publishing is wired up.
+**Phase to address:** Test harness/framework setup -- establish the polling utility before writing any verification scenarios.
 
 ---
 
-### Pitfall 2: Device Reboot Causes False Counter Reset — Delta Misread as Traffic Spike
+### Pitfall 2: Metric Staleness Does Not Work as Expected with OTel Remote Write
 
 **What goes wrong:**
-When a device reboots, all SNMP counters reset to zero. If the previous cached value was, say, 3,000,000,000 and the polled value is now 50,000 (post-reboot), the delta computation produces a massive false spike (or a large negative that unsigned arithmetic inflates). This can trigger false alerts and corrupt rate graphs.
+After removing a device or OID from configuration, the test queries Prometheus expecting the old metric to disappear. It does not. The metric persists with its last known value for approximately 5 minutes. The test either (a) waits 5+ minutes causing unacceptable test duration, or (b) falsely concludes removal failed.
 
 **Why it happens:**
-Counter resets via reboot look identical to counter wrap-around. There is no SNMP flag for "this counter just reset." Developers implement wrap detection but miss the reboot case.
+The OTel `prometheusremotewrite` exporter does not emit Prometheus staleness markers (stale NaN = `0x7ff0000000000002`) when a metric series stops being reported by a non-Prometheus source. This is a documented limitation: staleness markers are Prometheus-specific, and OTLP sources do not generate the `NoRecordedValue` flag that would trigger them. The OTel Collector continues sending the last known value for up to 5 minutes after the source stops reporting the metric.
 
-**How to avoid:**
-Poll `sysUpTime` (OID 1.3.6.1.2.1.1.3.0) on every poll cycle alongside counter OIDs. If `sysUpTime` has decreased since the last poll, the device has rebooted — discard counter deltas for that cycle and re-seed the cache from the new counter values. Alert separately on the reboot event. Note: `sysUpTime` measures how long the SNMP agent has been running, not necessarily OS uptime — use `hrSystemUptime` (1.3.6.1.2.1.25.1.1) for true OS uptime, but expect less device support.
+Additionally, Prometheus itself applies a 5-minute lookback window (`lookback_delta`) by default. Even if the metric truly stops being written, `last_over_time()` and instant queries will return the stale value for up to 5 minutes.
 
-**Warning signs:**
-- Extremely large rate values appearing immediately after network maintenance windows
-- Counter values decreasing on a device that should not have rebooted
-- Alert fatigue around maintenance windows
+**Consequences:**
+- Cannot verify metric removal via "query returns no data" within a reasonable test window
+- False confidence that metrics were removed when they were just outside the lookback window
+- Tests that take 5+ minutes per removal scenario
 
-**Phase to address:**
-Counter delta engine implementation phase — add `sysUpTime` polling and reset detection before wiring metrics to dashboards.
+**Prevention:**
+Do NOT verify metric removal by checking for absence in Prometheus queries. Instead:
+
+1. **Verify via log evidence:** After removing an OID from the map, confirm via `kubectl logs` that subsequent polls produce `metric_name=Unknown` for that OID (the OidMapService resolves unmapped OIDs to "Unknown"). This is observable within one poll interval (10 seconds).
+
+2. **Verify via metric_name label change:** Query for `snmp_gauge{metric_name="Unknown",oid="<the-removed-oid>"}` appearing -- this proves the OID is no longer mapped, which is the actual system behavior being tested.
+
+3. **Verify device removal via counter stagnation:** After removing a device, verify that `snmp_poll_executed_total{device_name="<removed>"}` stops incrementing (compare two readings 15+ seconds apart). Do not check for series absence.
+
+4. **Accept the 5-minute staleness window as a known system characteristic**, not a bug.
+
+**Detection:**
+- Tests with 5+ minute waits labeled "waiting for staleness"
+- Tests asserting `result == empty` for removed metrics
+- Flaky tests that pass after long delays but fail with short timeouts
+
+**Phase to address:** Test design phase -- establish removal verification patterns using log evidence and label changes before writing removal scenarios.
 
 ---
 
-### Pitfall 3: OTel Metric Cardinality Explosion from Per-Device or Per-OID Labels
+### Pitfall 3: Leader Election Timing Makes Business Metric Verification Non-Deterministic
 
 **What goes wrong:**
-Every unique combination of label values creates a distinct time series in Prometheus. If you add a label for `device_ip`, `oid`, `interface_name`, and `community_string`, you can end up with hundreds of thousands of unique series for a modest device fleet. The OTel SDK enforces a default 2,000 time-series-per-metric limit — instruments that exceed it silently drop data. Prometheus also struggles with cardinality at scale, consuming excessive memory.
+The test queries `snmp_gauge` or `snmp_info` from Prometheus and gets no results, even though the simulator is running and polls are executing. The cause: no pod currently holds leadership, or a leadership transition is in progress, so the `MetricRoleGatedExporter` suppresses all business metrics from export.
 
 **Why it happens:**
-Developers apply labels generously because Prometheus labels feel like free-form metadata. The cost is invisible until the system is loaded with real device data.
+Leader election uses K8s Lease API with configurable durations. During the window between one leader releasing the lease and another acquiring it, no business metrics are exported. The lease configuration (`LeaseDuration`, `RenewDeadline`, `RetryPeriod`) determines the gap. On pod restart or crash, the gap can be seconds to tens of seconds depending on TTL expiry vs. explicit lease deletion.
 
-**How to avoid:**
-Design label sets before writing any metric. Rules:
-1. Never use a label whose value is unbounded (request IDs, raw OID strings, raw IP addresses if the fleet is large)
-2. Limit to labels that are genuinely needed for alerting/grouping: `device_name`, `interface_index`, `metric_type`
-3. Use the OTel View API and `MetricStreamConfiguration.CardinalityLimit` to set explicit limits per instrument
-4. Model device metadata (location, vendor) as info metrics joined at query time, not as labels on every time series
+In the current system, `GracefulShutdownService` explicitly deletes the lease on graceful shutdown (near-instant failover). But if a pod is killed forcefully, followers must wait for the full `LeaseDuration` to expire.
 
-**Warning signs:**
-- Prometheus `tsdb.head_series` growing faster than device count would explain
-- OTel SDK warning logs about `InstrumentationScope` being dropped due to cardinality limit
-- Grafana queries taking > 5 seconds for dashboards with no complex aggregations
+**Consequences:**
+- Business metric queries return empty during leadership transitions
+- Tests checking `snmp_gauge` immediately after cluster changes fail sporadically
+- Pipeline metrics (snmp.event.handled) work fine, creating confusion about why business metrics are missing
 
-**Phase to address:**
-OTel metric model design phase — finalize label taxonomy on paper before instrument creation; cardinality decisions are very hard to migrate post-deployment.
+**Prevention:**
+1. **Always verify leader exists before testing business metrics:** Query pipeline metrics first (`snmp_event_handled_total`) -- these export from ALL instances regardless of leadership. If pipeline metrics are flowing but `snmp_gauge` is empty, it is a leadership gap.
+
+2. **Check leadership status via logs:** `kubectl logs -l app=snmp-collector -n simetra | grep "Acquired leadership"` -- confirm which pod holds leadership before running business metric tests.
+
+3. **Wait for leadership stabilization after any cluster change:** After scaling, restarting, or config changes that cause pod restarts, wait for lease acquisition log evidence plus one full OTel export cycle (15s) before querying business metrics.
+
+4. **Query with `service_instance_id` label** to verify the leader pod specifically is exporting.
+
+**Detection:**
+- `snmp_gauge` queries return empty while `snmp_event_handled_total` is incrementing
+- Tests pass when run alone but fail after pod restart scenarios
+- Intermittent "no data" results that resolve after re-running
+
+**Phase to address:** Pre-test health check phase -- verify leadership state as a precondition before every business metric test scenario.
 
 ---
 
-### Pitfall 4: MediatR Notification Handler Failure Blocks All Downstream Handlers
+### Pitfall 4: Test Isolation Failure -- Previous Test Metrics Contaminate Next Test
 
 **What goes wrong:**
-The default MediatR notification publisher (`ForeachAwaitPublisher`) executes handlers sequentially and stops at the first exception. In an SNMP monitoring pipeline, if the "store to database" handler throws, the "export to OTel" handler and "send alert" handler never run. The polling cycle silently loses metric observations for that device.
+Test scenario B queries Prometheus and finds metrics from test scenario A still present. This causes false positives (metrics appear to exist when they should not) or incorrect count assertions (counter values include increments from the previous test).
 
 **Why it happens:**
-MediatR's notification semantics look like broadcast (fire to all), but the default behavior is actually sequential with fail-fast. Developers assume "notifications = fire-and-forget to all handlers" without verifying the publisher strategy.
+Prometheus is an append-only time series database. Once a metric is written, it persists for the configured retention period (30 days in this system). There is no practical way to "reset" Prometheus between tests without losing all data. Combined with the 5-minute staleness window (Pitfall 2), metrics from a previous test are indistinguishable from current metrics unless timestamps are carefully compared.
 
-**How to avoid:**
-Switch to `TaskWhenAllPublisher` for notification dispatch or implement a custom publisher with per-handler try/catch. With `TaskWhenAllPublisher`, all handlers execute regardless of individual failures, and exceptions are aggregated into `AggregateException`. Wrap each handler's execution in its own catch block and log failures without rethrowing. Alternatively, use MediatR v12+'s configurable `NotificationPublisherType` property in `AddMediatR`.
+Additionally, OTel counters use cumulative temporality. `snmp_event_handled_total` never resets to zero between tests -- it monotonically increases across the pod's lifetime. A test that asserts "counter equals 5" will fail if a previous test already incremented it to 12.
 
-Critical caveat: `TaskWhenAllPublisher` runs handlers in parallel, which means they share the same DI scope. Services that are not concurrency-safe (EF Core `DbContext`) will cause race conditions. Audit all handler dependencies before enabling parallel dispatch.
+**Consequences:**
+- Tests must be run in a specific order to pass
+- Tests cannot be run independently for debugging
+- Counter value assertions are fragile and break when test execution order changes
 
-**Warning signs:**
-- Missing metric observations for specific devices when any downstream handler has errors
-- Exception logs from one handler followed by zero logs from subsequent handlers for the same notification
-- Alert handlers that never fire when persistence handlers are degraded
+**Prevention:**
+1. **Never assert counter absolute values.** Instead, record the counter value before the test action, perform the action, wait, then assert the delta: `post_value - pre_value >= expected_increment`.
 
-**Phase to address:**
-MediatR pipeline design phase — set the notification publisher strategy and validate handler error isolation before integrating multiple handlers.
+2. **Use timestamp-bounded queries.** Record `start_time` before the test action. Query with `snmp_gauge{...} @ <timestamp>` or use range queries with `[30s]` windows anchored to the test execution window.
+
+3. **Use unique label values per test scenario.** If testing OID map changes, use OID values or metric names specific to that test scenario. If two tests both use the same OID, their metrics will collide.
+
+4. **For the dedicated test simulator**, use unique device_name and community string per test scenario to naturally isolate metric series by label.
+
+**Detection:**
+- Tests that pass on first run but fail on second run without cluster restart
+- Counter assertions with exact values that break when test order changes
+- Test failures that reference metrics with timestamps older than the test start time
+
+**Phase to address:** Test design phase -- establish delta-based counter assertions and timestamp-bounded queries as foundational patterns.
 
 ---
 
-### Pitfall 5: SharpSnmpLib ObjectStore is Not Thread-Safe
+## Moderate Pitfalls
+
+Mistakes that cause delays, flaky tests, or missed coverage.
+
+### Pitfall 5: ConfigMap Propagation is Not Instantaneous Across All Replicas
 
 **What goes wrong:**
-SharpSnmpLib's `ObjectStore` (used by `SnmpEngine` for agent/trap handling) is explicitly documented as not thread-safe. The `SnmpEngine` is multi-threaded by design — both `ListenerBinding` and `SnmpApplication` dispatch to the CLR thread pool. Concurrent reads/writes to `ObjectStore` from multiple inbound traps or SNMP requests can produce data corruption, race conditions, or crashes.
+A test applies a ConfigMap change (OID map update, device addition) and immediately checks all 3 replicas for the new behavior. Some replicas have not received the watch event yet, causing partial failures.
 
 **Why it happens:**
-The library handles concurrency at the engine level but delegates object storage safety to the developer. The documentation warns about this but it is easy to miss when following samples that do not simulate concurrent load.
+The system uses K8s API watch (not volume-projected ConfigMaps) via `OidMapWatcherService` and `DeviceWatcherService`. K8s API watch events are typically sub-second, but:
+- The watch event must be delivered to each pod's watcher independently
+- Each watcher serializes reload via `SemaphoreSlim` (one at a time)
+- The `DynamicPollScheduler.ReconcileAsync` must complete (Quartz job registration)
+- If a watch connection was recently closed (~30 min K8s server timeout), the pod reconnects with a 5-second backoff
 
-**How to avoid:**
-- Initialize the thread pool minimum worker thread count before calling `SnmpEngine.Start()` (the docs recommend setting it explicitly)
-- Wrap all `ObjectStore` operations in locks or replace with a concurrent-safe data structure (e.g., `ConcurrentDictionary`)
-- For trap listener use cases (common in SNMP monitoring), avoid `ObjectStore` entirely — process traps immediately in the handler and dispatch to a channel or queue for downstream processing
-- Test under concurrent trap bursts early; single-device dev environments will never surface this
+In practice, all 3 replicas typically converge within 1-3 seconds, but edge cases can extend this to 5-10 seconds.
 
-**Warning signs:**
-- Sporadic `NullReferenceException` or `KeyNotFoundException` under load in engine handler code
-- Trap processing that works in single-device test but fails randomly in production
-- ObjectStore corruption only visible during bursts
+**Prevention:**
+1. After applying a ConfigMap change via `kubectl apply`, wait for log evidence from ALL replicas: `"OID map reload complete"` or `"Device config reload complete"` with the expected entry count.
+2. Add a 5-second post-reload stabilization wait before querying Prometheus, to allow the first post-reload poll cycle to complete and the 15-second export interval to fire.
+3. For tests that verify behavior on a specific pod, filter logs by pod name rather than checking all replicas.
 
-**Phase to address:**
-Trap listener implementation phase — validate thread safety under concurrent load before declaring the listener complete.
+**Detection:**
+- Tests that pass 2 out of 3 times (one replica slow to update)
+- Log output showing reload on 2 of 3 pods before the test query fires
+
+**Phase to address:** ConfigMap mutation test scenarios -- add per-pod log verification as a precondition after every ConfigMap apply.
 
 ---
 
-### Pitfall 6: SNMPv3 USM "Not In Time Window" Silently Drops Traps
+### Pitfall 6: Querying Prometheus Counter Rate Over Too Short a Window
 
 **What goes wrong:**
-SNMPv3's User-based Security Model (USM) requires that the time stamp in a received message fall within 150 seconds of the receiver's clock (RFC 3414). If the clock on the sending device drifts by more than 150 seconds from the trap listener's clock, the listener silently rejects all inbound traps. SharpSnmpLib will not send a response in this case, which prevents SNMP time re-synchronization, creating an indefinite rejection loop.
+Test uses `rate(snmp_event_handled_total[15s])` and gets zero or `NaN` because there are fewer than 2 data points in the 15-second window. The test concludes the pipeline is not processing events.
 
 **Why it happens:**
-NTP misconfiguration or clock drift on network devices is common. This failure mode is invisible — no error log appears on the sending device side, and the listener silently discards the packet.
+Prometheus `rate()` requires at least 2 data points within the specified range to compute a rate. With a 15-second OTel export interval, a `[15s]` window may contain only 1 data point. The rule of thumb is that the range window should be at least 2x the scrape/write interval.
 
-**How to avoid:**
-- Ensure NTP synchronization between all monitored devices and the monitoring server
-- Log `notInTimeWindow` rejections explicitly in the trap handler (SharpSnmpLib raises these as `ErrorStatus` results — parse and log them)
-- Monitor the count of rejected traps as a metric; alert if it grows
-- For development: test with an intentionally drifted clock to confirm rejection logging works
+For this system (15s export), `rate(...[30s])` is the minimum viable window, and `rate(...[1m])` is safer.
 
-**Warning signs:**
-- Traps stop arriving on the listener after a device NTP reconfiguration
-- V3 trap reception works in dev (same machine) but fails in production (separate hosts)
-- No errors on the device side, no errors in app logs — total silence
+**Prevention:**
+1. **For counter verification, prefer raw value comparison over rate().** Query `snmp_event_handled_total{...}` directly, compare before/after values.
+2. If rate() is needed, use at least `[1m]` window: `rate(snmp_event_handled_total[1m])`.
+3. Never use `irate()` for E2E test assertions -- it uses only the last two data points and is highly volatile.
 
-**Phase to address:**
-Trap listener implementation phase — build explicit rejection logging before testing with real network devices.
+**Detection:**
+- `rate()` queries returning NaN or 0 when the counter is clearly incrementing (visible via raw value query)
+- Different results depending on when within the export cycle the query runs
 
----
-
-## Technical Debt Patterns
-
-| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
-|----------|-------------------|----------------|-----------------|
-| Poll with a single Quartz thread pool size for all jobs | Simple config | Long-running jobs (SNMP timeout = 5s) block short-cycle jobs; thread starvation at 50+ devices | Never — size the pool relative to device count from day 1 |
-| Use raw OID strings as metric label values | No OID map needed | Unbounded label cardinality; Prometheus memory explosion | Never — always map OIDs to stable human-readable names |
-| Store mutable objects in `AsyncLocal` for correlation IDs | Easy context flow | Copy-on-write semantics cause child tasks to see stale IDs; mutations leak across execution contexts | Never — store only immutable value types (strings, GUIDs) in `AsyncLocal` |
-| Skip `sysUpTime` polling to save one OID per device | Fewer poll round trips | Counter resets on reboot generate false spikes with no way to detect them | Never — `sysUpTime` is cheap and mandatory |
-| Use `ForeachAwaitPublisher` (MediatR default) for metric dispatch | Zero config | One failing handler silently drops all downstream metric exports | Acceptable in early dev before multi-handler integration |
-| Dispose `MeterProvider` at process exit without explicit flush | Relies on GC | Last metric batch before shutdown lost; counters appear to reset on next start | Never — explicitly call `ForceFlush` then dispose in `IHostedService.StopAsync` |
+**Phase to address:** Test harness setup -- document approved PromQL patterns for test assertions.
 
 ---
 
-## Integration Gotchas
+### Pitfall 7: UDP Trap Delivery is Unreliable by Design
 
-| Integration | Common Mistake | Correct Approach |
-|-------------|----------------|------------------|
-| SharpSnmpLib trap listener | Using `SnmpEngine` default thread pool without pre-sizing | Call `ThreadPool.SetMinThreads` before `SnmpEngine.Start()` per SharpSnmpLib docs |
-| OTel → Prometheus (OTLP push) | Prometheus `prometheus-pushgateway` never forgets pushed series — stale device metrics linger forever after a device is decommissioned | Use OTLP native ingestion (Prometheus 2.47+ with `--enable-feature=otlp-write-receiver`) or manage stale series via delete API |
-| OTel + Prometheus pull exporter | Prometheus exporter caches scrape responses for 300 seconds by default — polling changes are invisible for 5 minutes | Configure `ResponseCacheDurationMilliseconds` to match scrape interval; or use OTLP push to avoid this entirely |
-| OTel temporality | OTLP defaults to cumulative; Prometheus is cumulative-only, but some OTel instruments default to delta | Explicitly set `AggregationTemporality.Cumulative` on all SNMP counter instruments; never mix delta/cumulative for the same metric |
-| Quartz + SNMP timeout | Default SNMP timeout (5s) × concurrent jobs can exhaust Quartz thread pool before jobs signal completion | Set `maxConcurrency` in Quartz to at least `(device_count × polls_per_minute × snmp_timeout_seconds) / 60`; tune per environment |
-| Leader election + OTel export | Multiple instances all export the same device metrics → Prometheus sees duplicate series with timestamp conflicts | Gate `MeterProvider` registration behind leader check; only the current leader activates metric instruments; followers run in standby mode |
+**What goes wrong:**
+A test triggers a trap from a simulator, then checks Prometheus for the resulting metric. The metric never appears. The trap was lost on the network (UDP has no delivery guarantee) and there is no retry mechanism.
 
----
+**Why it happens:**
+SNMP traps use UDP. Within a K8s cluster, UDP packet loss is rare but not zero, especially under resource contention. The SnmpTrapListenerService listens on port 10162 and has no acknowledgment protocol. If the pod is temporarily unavailable (restart, OOM, CPU throttling), the trap is silently dropped.
 
-## Performance Traps
+**Prevention:**
+1. **For trap-based test scenarios, always verify receipt via logs** before checking Prometheus: `"Trap received from {IP}"` or `snmp_trap_received_total` counter increment.
+2. **If trap verification fails, retry the trap send** (up to 3 times with 2-second intervals) before declaring failure.
+3. **Prefer poll-based verification where possible** -- polls are initiated by the collector and have timeout/retry semantics, making them more deterministic than traps.
+4. For the dedicated test simulator, log trap send confirmations on the simulator side to correlate with collector receipt.
 
-| Trap | Symptoms | Prevention | When It Breaks |
-|------|----------|------------|----------------|
-| Linear OID lookup in poll handler | CPU spikes every poll cycle; latency grows proportional to OID map size | Use `Dictionary<string, OidMetadata>` with string keys — O(1) lookup; never iterate a list to match OIDs | Noticeable at ~200 OIDs; painful at 500+ |
-| Creating new OTel instruments per poll cycle | Memory growth; `InstrumentationScope` warnings; OTel SDK overhead | Instruments must be created once and reused as static/singleton instances — creation is expensive | Immediately visible at any scale |
-| Quartz job scheduling 500+ individual device jobs | Scheduler startup latency; `IScheduler.Start()` blocks for seconds | Group devices by poll interval and use a single job that fans out to devices, or use `DisallowConcurrentExecution` + a device queue | At ~100 jobs with short intervals |
-| Blocking async SNMP calls in Quartz job without timeout | Job hangs forever if device is unreachable; thread pool thread held indefinitely | Always wrap SNMP `Get`/`GetBulk` in a `CancellationToken` with timeout ≤ configured poll interval; propagate `context.CancellationToken` from Quartz into SNMP call | First unreachable device in production |
-| `AsyncLocal` with mutable correlation state across thread boundaries | Correlation ID bleeds between device poll contexts; logs from device A appear under device B's correlation | Store only `string` or `Guid` (immutable) in `AsyncLocal`; reassign (don't mutate) to get copy-on-write isolation | In thread pool under concurrent polls |
+**Detection:**
+- Sporadic trap test failures that pass on retry
+- Missing `snmp_trap_received_total` increment despite simulator confirming send
+- Trap tests that work in low-load environments but fail under stress
+
+**Phase to address:** Trap verification scenarios -- build retry logic into trap send utilities.
 
 ---
 
-## Security Mistakes
+### Pitfall 8: Verifying Pipeline Counters on Wrong Pod Due to Leader-Gating Confusion
 
-| Mistake | Risk | Prevention |
-|---------|------|------------|
-| Hardcoding SNMP community strings in `appsettings.json` | Community strings checked into source control; read access to all monitored device MIBs | Use .NET secrets manager or environment variables; rotate community strings; prefer SNMPv3 with authPriv |
-| Storing SNMPv3 auth/privacy keys in plain text config | Key compromise = full read/write access to device SNMP tree | Use .NET Data Protection API or a secrets vault for USM credentials |
-| Exposing Prometheus scrape endpoint without authentication | Internal metric data (device names, IPs, OIDs) leakable to any internal requester | Gate the `/metrics` endpoint behind at minimum network-level ACL; use bearer token auth with the Prometheus `BasicAuthMiddleware` pattern |
-| Accepting all trap source IPs without validation | Malicious actors can inject fake traps, triggering false alerts or flooding the trap listener | Maintain an allowlist of device IP ranges; validate source IP in the trap handler before dispatching |
-| Quartz admin UI exposed to broad network | Arbitrary job creation = remote code execution (documented in Quartz best practices) | Disable the Quartz admin UI entirely or restrict to localhost; never expose to external networks |
+**What goes wrong:**
+A test verifies that `snmp_event_handled_total` incremented on the leader pod, but queries Prometheus filtered to a specific `service_instance_id`. The query returns zero because the test is looking at a follower pod. The tester concludes the pipeline is broken.
 
----
+**Why it happens:**
+Pipeline metrics (`SnmpCollector` meter) are exported by ALL instances. Business metrics (`SnmpCollector.Leader` meter) are exported only by the leader. Testers confuse which metrics are gated and which are not.
 
-## "Looks Done But Isn't" Checklist
+Additionally, OTel resource attributes add `service_instance_id` and `k8s_pod_name` labels to ALL metrics (both pipeline and business). When querying pipeline counters, filtering by a specific pod's identity is valid. But for business metrics, only the leader's pod identity will have data.
 
-- [ ] **Counter delta engine:** Tested with Counter32 wrap-around simulation (inject value = `uint.MaxValue - 10`, next poll = 5) — verify delta is `16` not a spike
-- [ ] **Counter reset on reboot:** Tested by injecting a decreasing `sysUpTime` — verify the cycle is discarded and cache re-seeded
-- [ ] **Trap listener:** Tested under concurrent trap burst (100 traps/second) — verify no race conditions in handler dispatch
-- [ ] **OTel flush on shutdown:** Verified that the last metric batch before process exit reaches Prometheus — check OTLP receiver logs for the final push
-- [ ] **Quartz job cancellation:** Verified that SNMP poll jobs honor `context.CancellationToken` when the host shuts down — no hung threads blocking shutdown
-- [ ] **MediatR handler isolation:** Verified that a failure in one notification handler does not prevent other handlers from executing
-- [ ] **Cardinality limits:** Counted unique label value combinations for the target device fleet — confirmed below OTel default 2,000 limit per instrument
-- [ ] **SNMPv3 time window:** Tested with a simulated 151-second clock skew — verify trap is rejected AND the rejection is logged explicitly
-- [ ] **Leader election metric gating:** Verified that only the leader instance exports metrics — confirmed no duplicate series appear in Prometheus under two-instance test
+**Prevention:**
+Document and reference this lookup table in every test scenario:
 
----
+| Metric | Exported By | Filter By Pod? |
+|--------|------------|----------------|
+| `snmp_event_handled_total` | All instances | Yes (each pod has its own count) |
+| `snmp_poll_executed_total` | All instances | Yes |
+| `snmp_trap_received_total` | All instances | Yes |
+| `snmp_gauge` | Leader only | Only leader pod will have data |
+| `snmp_info` | Leader only | Only leader pod will have data |
 
-## Recovery Strategies
+For pipeline counter verification across the cluster, omit the pod identity filter and sum: `sum(snmp_event_handled_total{device_name="OBP-01"})`.
 
-| Pitfall | Recovery Cost | Recovery Steps |
-|---------|---------------|----------------|
-| Cardinality explosion already in Prometheus | HIGH | Delete affected series via Prometheus admin API (`/api/v1/admin/tsdb/delete_series`); redeploy with corrected label set; accept data gap during migration |
-| OID map performance degradation at scale | LOW | Replace list scan with `Dictionary` lookup — isolated to OID resolution layer; no schema migration needed |
-| MediatR handler failure silently dropping metrics | MEDIUM | Switch publisher strategy and add per-handler catch wrappers; no data model change needed but requires testing all handler interaction paths |
-| Incorrect counter delta formula producing bad historical data | HIGH | Historical data in Prometheus cannot be corrected retroactively; fix the formula, accept bad data in historical graphs, document the known-bad window |
-| SharpSnmpLib `ObjectStore` race condition | MEDIUM | Replace with concurrent-safe structure; requires load testing to validate fix; no external API changes |
-| SNMPv3 time window silent drops | LOW | Add NTP validation step to device onboarding checklist; add metric for rejected traps; no code rewrite needed |
+**Detection:**
+- Queries returning data for some pods but not others
+- Business metric queries that only work when filtered to one specific pod
+- Confusion about why removing the pod filter changes results
+
+**Phase to address:** Test harness documentation -- create a metric reference card before writing test scenarios.
 
 ---
 
-## Pitfall-to-Phase Mapping
+### Pitfall 9: Heartbeat Metrics Contaminating Test Assertions
 
-| Pitfall | Prevention Phase | Verification |
-|---------|------------------|--------------|
-| Counter32/64 wrap-around miscomputation | Counter delta engine implementation | Unit test: inject wrap-around values, assert correct delta |
-| Device reboot false counter reset | Counter delta engine implementation | Unit test: inject decreasing `sysUpTime`, assert cycle discarded |
-| OTel cardinality explosion | OTel metric model design (before first instrument created) | Count unique label combinations; review with Prometheus admin |
-| MediatR notification handler failure blocking | MediatR pipeline design | Integration test: failing handler + assert other handlers still fire |
-| SharpSnmpLib `ObjectStore` thread safety | Trap listener implementation | Load test: 100 concurrent traps, assert no exceptions |
-| SNMPv3 USM time window | Trap listener implementation | Test with drifted clock, assert rejection is logged |
-| Quartz thread pool starvation | Scheduling infrastructure phase | Load test: max device count × poll frequency × SNMP timeout |
-| OTel flush on shutdown | OTel/Quartz integration phase | Kill process mid-cycle, verify last batch in Prometheus |
-| `AsyncLocal` correlation ID bleed | Polling engine implementation | Concurrent device poll test, verify per-device log correlation |
-| Duplicate metrics from multiple instances | Leader election phase | Two-instance test, verify Prometheus shows exactly one series set |
-| OID map linear scan performance | OID resolution implementation | Benchmark: 500 OID lookups per second sustained, assert < 1ms p99 |
-| SNMP poll job timeout / hung thread | Scheduling infrastructure phase | Test with unreachable device, verify job cancels within poll interval |
+**What goes wrong:**
+A test counts total `snmp_event_handled_total` increments after triggering a poll and finds more increments than expected. The extra increments come from the HeartbeatJob, which fires on a separate schedule and also increments `snmp_event_handled_total` (with `device_name` derived from the heartbeat's internal routing).
+
+**Why it happens:**
+The HeartbeatJob sends a loopback trap through the full MediatR pipeline. The `OtelMetricHandler` increments `snmp_event_handled_total` for heartbeats (with `IsHeartbeat=true` flag). Heartbeat events are correctly suppressed from `snmp_gauge`/`snmp_info` export, but pipeline counters still count them. The heartbeat runs independently on a timer, so its increments arrive at unpredictable times relative to the test.
+
+**Prevention:**
+1. **Always filter counter queries by `device_name`.** Heartbeat events use a specific device name (likely the pod's own identity or a sentinel value). Test scenarios should query `snmp_event_handled_total{device_name="OBP-01"}` rather than unfiltered `snmp_event_handled_total`.
+2. **Use delta-based assertions** (Pitfall 4 prevention) so that background heartbeat increments between the "before" and "after" snapshots are excluded by the device_name filter.
+3. **Verify heartbeat behavior is correct in a dedicated test**, not as a side effect of other tests.
+
+**Detection:**
+- Counter increments higher than expected by a small, varying amount
+- Increments that occur even when no simulator is sending data
+- The extra count matches the heartbeat interval pattern
+
+**Phase to address:** Pipeline counter verification scenarios -- filter by device_name in all counter queries.
+
+---
+
+## Minor Pitfalls
+
+Mistakes that cause annoyance or confusion but are fixable.
+
+### Pitfall 10: kubectl logs Buffer Truncation Losing Evidence
+
+**What goes wrong:**
+A test checks `kubectl logs` for evidence of a specific event (OID map reload, trap receipt) but the log line has already scrolled out of the buffer. The test reports "no evidence found" when the event actually occurred.
+
+**Why it happens:**
+Default `kubectl logs` returns the last ~4096 lines or the current container's log buffer. In a high-throughput system with verbose logging, log lines from 30 seconds ago may already be truncated.
+
+**Prevention:**
+1. Use `kubectl logs --since=30s` to scope log retrieval to the test's time window.
+2. Use `kubectl logs --timestamps` to correlate log entries with test execution time.
+3. For critical evidence, capture logs to a file immediately after the action rather than querying later.
+4. Consider querying Elasticsearch (the system exports logs via OTel Collector) for structured log search, though this adds another hop with its own latency.
+
+**Detection:**
+- Log evidence queries that return empty despite the action clearly succeeding (metric appeared in Prometheus)
+- Inconsistent log evidence between fast and slow test runs
+
+**Phase to address:** Test harness setup -- build log capture utilities with timestamp scoping.
+
+---
+
+### Pitfall 11: Port-Forward Instability During Long Test Runs
+
+**What goes wrong:**
+The test suite uses `kubectl port-forward svc/prometheus 9090:9090` to query Prometheus. Mid-suite, the port-forward drops silently. Subsequent Prometheus queries fail with connection refused, and the test reports metric verification failures.
+
+**Prevention:**
+1. Verify port-forward is alive before each Prometheus query attempt (quick health check: `GET /api/v1/status/buildinfo`).
+2. Implement automatic port-forward reconnection in the test harness.
+3. Alternatively, use `kubectl exec` to run `curl` against the in-cluster Prometheus service directly, bypassing port-forward entirely.
+
+**Detection:**
+- Tests that fail mid-suite with connection errors, not assertion errors
+- Failures that correlate with test duration rather than test content
+
+**Phase to address:** Test harness infrastructure -- build resilient Prometheus query utility.
+
+---
+
+## Phase-Specific Warnings
+
+| Phase Topic | Likely Pitfall | Mitigation |
+|-------------|---------------|------------|
+| Test harness setup | Fixed sleeps instead of poll-until-satisfied (Pitfall 1) | Build polling utility as first deliverable; 30s timeout, 3s poll interval |
+| Pipeline counter verification | Heartbeat contamination (Pitfall 9), absolute value assertions (Pitfall 4) | Filter by device_name; use delta assertions |
+| Business metric verification | Leader gap (Pitfall 3), staleness confusion (Pitfall 2) | Verify leadership first; verify via label changes not absence |
+| OID map mutation tests | ConfigMap propagation delay (Pitfall 5), staleness (Pitfall 2) | Wait for reload logs from all pods; check for metric_name="Unknown" |
+| Device lifecycle tests | Staleness prevents absence verification (Pitfall 2) | Verify via counter stagnation and log evidence |
+| Trap-based scenarios | UDP unreliability (Pitfall 7), heartbeat noise (Pitfall 9) | Retry trap sends; filter by device_name |
+| Test simulator design | Metric collision with production simulators (Pitfall 4) | Use unique device_name and community string per test scenario |
+| ConfigMap watcher tests | All-replica convergence timing (Pitfall 5) | Per-pod log verification before metric queries |
+| Multi-scenario test runs | Port-forward drops (Pitfall 11), log truncation (Pitfall 10) | Health-check port-forward; scope logs with --since |
+
+---
+
+## Key Timing Constants Reference
+
+These are the actual values from the system source code and K8s manifests:
+
+| Constant | Value | Source |
+|----------|-------|--------|
+| OTel export interval | 15 seconds | `ServiceCollectionExtensions.cs` line 105: `exportIntervalMilliseconds: 15_000` |
+| Prometheus scrape interval | N/A (remote write, not scrape) | `prometheus.yaml`: uses `--web.enable-remote-write-receiver` |
+| Prometheus staleness lookback | 5 minutes (default) | Prometheus default `lookback_delta` |
+| Device poll interval | 10 seconds | `devices.json` configuration |
+| Heartbeat interval | Configurable via `HeartbeatJobOptions` | `appsettings.json` |
+| K8s watch reconnect backoff | 5 seconds | `OidMapWatcherService.cs` line 131: `TimeSpan.FromSeconds(5)` |
+| K8s watch server timeout | ~30 minutes | K8s API server default |
+| OTel metric temporality | Cumulative | `ServiceCollectionExtensions.cs` line 107: `TemporalityPreference = Cumulative` |
+| Prometheus retention | 30 days | `prometheus.yaml`: `--storage.tsdb.retention.time=30d` |
+| Graceful shutdown budget | 30 seconds | `deployment.yaml`: `terminationGracePeriodSeconds: 30` |
+| Lease explicit delete | On graceful shutdown | `K8sLeaseElection.StopAsync()` deletes lease |
 
 ---
 
 ## Sources
 
-- Cisco SNMP Counter FAQ: [Consider SNMP Counters: Frequently Asked Questions](https://www.cisco.com/c/en/us/support/docs/ip/simple-network-management-protocol-snmp/26007-faq-snmpcounter.html) — HIGH confidence (official Cisco documentation)
-- RFC 3414 USM time window: [RFC 3414 - User-based Security Model for SNMPv3](https://datatracker.ietf.org/doc/html/rfc3414) — HIGH confidence (IETF RFC)
-- Netdata counter wrap issue: [incremental chart algorithm doesn't handle counter wrap properly](https://github.com/netdata/netdata/issues/4533) — MEDIUM confidence (production post-mortem)
-- sysUpTime reboot detection: [Catch Unexpected Reboots Through Monitoring sysUpTimeInstance](https://packetpushers.net/blog/catch-unexpected-reboots-through-monitoring-sysuptimeinstance/) — MEDIUM confidence (verified against SNMP RFC)
-- OTel .NET metrics best practices: [Best practices — OpenTelemetry .NET](https://opentelemetry.io/docs/languages/dotnet/metrics/best-practices/) — HIGH confidence (official OTel documentation)
-- OTel graceful shutdown discussion: [Graceful shutdown and forcing exporter to push — opentelemetry-dotnet](https://github.com/open-telemetry/opentelemetry-dotnet/discussions/3614) — HIGH confidence (maintainer response)
-- OTel cardinality limit: OTel SDK default of 2,000 per metric confirmed in official docs above — HIGH confidence
-- MediatR notification publisher pitfall: [How To Publish MediatR Notifications In Parallel — Milan Jovanovic](https://www.milanjovanovic.tech/blog/how-to-publish-mediatr-notifications-in-parallel) — MEDIUM confidence (verified against MediatR v12 changelog)
-- MediatR parallel publisher EF Core warning: Official article warning about shared DI scope — MEDIUM confidence
-- SharpSnmpLib ObjectStore thread safety: [Agent Development — C# SNMP Library](https://docs.sharpsnmp.com/samples/agent-development.html) (redirects to lextudio.com) — MEDIUM confidence (library official docs, documented limitation)
-- SharpSnmpLib time window issue: [SharpSnmpLib GitHub issue #83](https://github.com/lextudio/sharpsnmplib/issues/83) — MEDIUM confidence (library issue tracker)
-- Quartz.NET best practices: [Quartz.NET Best Practices](https://www.quartz-scheduler.net/documentation/best-practices.html) — HIGH confidence (official Quartz documentation)
-- Quartz hung job issue: [Scheduler hangs without reporting exception — quartznet #800](https://github.com/quartznet/quartznet/issues/800) — MEDIUM confidence (library issue tracker)
-- Prometheus leader election duplicate metrics: [Prometheus Operator with Leader Election](https://medium.com/yotpoengineering/prometheus-operator-with-leader-election-solving-duplicate-remote-write-metrics-in-ha-setup-8b6581d10b45) — LOW confidence (single source, community post)
-- AsyncLocal pitfalls: [Conveying Context with AsyncLocal](https://medium.com/@norm.bryar/conveying-context-with-asynclocal-91fa474a5b42), [Hidden Workings of Execution Context in .NET](https://medium.com/net-under-the-hood/hidden-workings-of-execution-context-in-net-43b491726c65) — MEDIUM confidence (multiple consistent sources)
-- SNMP false spikes on reboot: [Zabbix Forums — SNMP Counter reset breaks delta item](https://www.zabbix.com/forum/zabbix-help/32899-snmp-counter-reset-breaks-delta-item), [Icinga community post](https://community.icinga.com/t/network-interface-traffic-via-snmp-shows-spikes-on-reboot/11605) — MEDIUM confidence (multiple monitoring platform communities confirm the pattern)
+- Prometheus Remote-Write 1.0 specification (staleness markers): [Prometheus Remote Write Spec](https://prometheus.io/docs/specs/prw/remote_write_spec/) -- HIGH confidence (official spec)
+- Prometheus staleness behavior: [Staleness and PromQL - Robust Perception](https://www.robustperception.io/staleness-and-promql/) -- HIGH confidence (official Prometheus consulting)
+- OTel prometheusremotewrite exporter staleness gap: [Issue #6620](https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/6620) -- HIGH confidence (official OTel repo issue)
+- OTel prometheusremotewrite keeps sending stale data: [Issue #27893](https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/27893) -- HIGH confidence (official OTel repo issue, confirmed by maintainers)
+- Prometheus remote write staleness compliance gap: [Issue #38](https://github.com/open-telemetry/prometheus-interoperability-spec/issues/38) -- HIGH confidence (official interop spec)
+- K8s ConfigMap propagation delay: [Kubernetes ConfigMaps docs](https://kubernetes.io/docs/concepts/configuration/configmap/) -- HIGH confidence (official K8s docs)
+- K8s ConfigMap watch delay vs volume mount: [Kubernetes issue #30189](https://github.com/kubernetes/kubernetes/issues/30189) -- MEDIUM confidence (community issue with maintainer responses)
+- System source code analysis: `ServiceCollectionExtensions.cs`, `MetricRoleGatedExporter.cs`, `OtelMetricHandler.cs`, `OidMapWatcherService.cs`, `K8sLeaseElection.cs`, `PipelineMetricService.cs`, `SnmpMetricFactory.cs` -- HIGH confidence (direct source verification)
 
 ---
-*Pitfalls research for: SNMP monitoring system — .NET 9 / MediatR / Quartz.NET / OTel*
-*Researched: 2026-03-04*
+*Pitfalls research for: E2E system verification of SNMP monitoring pipeline*
+*Researched: 2026-03-09*

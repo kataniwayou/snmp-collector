@@ -1,218 +1,161 @@
 # Project Research Summary
 
-**Project:** Simetra117 — SNMP Monitoring System
-**Domain:** Network device telemetry collection, C# .NET 9, OTel push pipeline to Prometheus/Grafana
-**Researched:** 2026-03-04
-**Confidence:** HIGH (stack and architecture derived from reference implementation; pitfalls sourced from RFCs and official docs)
+**Project:** SnmpCollector v1.4 -- E2E System Verification
+**Domain:** End-to-end test infrastructure for K8s-based SNMP monitoring pipeline
+**Researched:** 2026-03-09
+**Confidence:** HIGH
 
 ## Executive Summary
 
-This is a K8s-native SNMP monitoring agent that collects device telemetry via two paths (trap reception on UDP 162 and scheduled SNMP GET/GETBULK polling) and exports metrics to Prometheus/Grafana via an OpenTelemetry push pipeline. The reference implementation at `src/Simetra/` already establishes the full architectural pattern — this project is a disciplined re-implementation and extension of that pattern, not greenfield design. The stack is definitive: Lextm.SharpSnmpLib 12.5.7 for SNMP protocol work, Quartz.NET 3.16.0 for poll scheduling, MediatR 12.5.0 (MIT) as the internal event bus, OpenTelemetry 1.15.0 for telemetry export, and KubernetesClient 19.0.2 for leader election via K8s Lease API.
+The SnmpCollector v1.4 milestone is a verification-only effort: build an E2E test harness that proves the full SNMP-to-Prometheus pipeline works correctly under normal operation, configuration mutations, and edge cases. The existing system (C# .NET 9, OTel, MediatR, Quartz.NET, 3-replica K8s deployment with leader election) is not modified. The test infrastructure is purely additive -- a bash/Python harness that exercises the system through its existing interfaces (SNMP UDP, ConfigMap K8s API, Prometheus HTTP API) and reports pass/fail results.
 
-The recommended architecture separates ingestion (trap listener + Quartz poller) from processing (MediatR pipeline with behaviors) from export (role-gated OTLP push). Both ingestion paths converge on a single `SnmpOidReceived` MediatR notification, allowing behaviors (logging, exception handling, OID resolution) to apply uniformly regardless of source. Traps are buffered through per-device `BoundedChannel<TrapEnvelope>` instances to decouple reception rate from processing rate. Poll jobs bypass channels entirely and publish directly to MediatR. Only the leader pod exports business metrics; all pods export pipeline and runtime metrics. Graceful shutdown is an orchestrated 5-step sequence registered as the last hosted service.
+The recommended approach is a bash test runner (`run-e2e.sh`) orchestrating 42 test scenarios across 8 categories, with a dedicated Python SNMP test simulator (`e2e-sim`) for edge cases that existing OBP/NPB simulators cannot cover. The test runner queries Prometheus directly via HTTP API and parses kubectl logs for evidence. ConfigMap manipulation follows an extract-merge-apply pattern with snapshot/restore safety. No new heavyweight dependencies -- just `curl`, `jq`, `kubectl`, and a pysnmp-based simulator matching the existing simulator stack.
 
-The critical risks are front-loaded: OTel metric cardinality must be designed before any instruments are created (retroactive migration of Prometheus series is HIGH cost), counter delta logic (wrap-around and reboot detection) must be correct before any counter metrics reach dashboards (bad historical data cannot be corrected retroactively), and the SharpSnmpLib ObjectStore thread-safety constraint must be avoided by routing traps through channels rather than the ObjectStore directly. The MediatR notification publisher strategy (default ForeachAwaitPublisher vs TaskWhenAllPublisher) must also be decided at pipeline design time to prevent silent metric drops on handler failures.
-
----
+The dominant risk is timing: the OTel push pipeline introduces a 15-25 second latency between metric recording and Prometheus queryability, and Prometheus metric staleness persists for 5 minutes after a series stops being written. These two characteristics mean tests must use poll-until-satisfied patterns (never fixed sleeps) and verify metric removal via label changes or counter stagnation (never via absence queries). Leader election adds a third timing dimension -- business metrics only export from the leader pod, so tests must verify leadership state before asserting on `snmp_gauge`/`snmp_info`. All three timing pitfalls are well-understood and have documented mitigations.
 
 ## Key Findings
 
 ### Recommended Stack
 
-All stack choices are verified against NuGet and official sources as of 2026-03-04. The stack is stable and appropriate for .NET 9. The only decision requiring a judgment call is MediatR version: use 12.5.0 (MIT, last fully free version) unless the team is already licensed for commercial MediatR use. The pipeline behaviors pattern MediatR enables is valuable but replaceable (~200 lines) if licensing is a blocker.
-
-All OTel packages (SDK, OTLP Exporter, Extensions.Hosting) must be pinned to the same version (1.15.0) — mixed versions cause runtime errors.
+The E2E stack aligns with the existing Python simulator ecosystem to minimize cognitive overhead. No C# code changes or new heavyweight dependencies.
 
 **Core technologies:**
-- **Lextm.SharpSnmpLib 12.5.7:** SNMP protocol — trap reception and polling — the only actively maintained MIT-licensed SNMP library for modern .NET
-- **Quartz.NET 3.16.0:** Poll scheduling with per-job cron/interval config, misfire handling, and [DisallowConcurrentExecution] — no database required (RAM scheduler)
-- **MediatR 12.5.0 (MIT):** Internal event bus and pipeline behavior chain — use v12.5.0 to avoid RPL-1.5 license exposure on v13+
-- **OpenTelemetry 1.15.0 (SDK + OTLP Exporter + Extensions.Hosting):** Metrics, logs, and traces via gRPC push to OTel Collector — all same version required
-- **KubernetesClient 19.0.2:** K8s Lease API for leader election — Apache-2.0, includes LeaderElector with LeaseLock
+- **pytest 9.0.2 + requests + tenacity:** Test runner, HTTP queries, retry-with-backoff for Prometheus polling. Python is the right glue language for subprocess (kubectl) and HTTP (Prometheus API) orchestration
+- **pysnmp 7.1.22:** Dedicated test simulator matching existing OBP/NPB simulator patterns exactly. Same imports, same engine setup, deterministic behavior
+- **kubectl CLI (subprocess):** Four operations needed (logs, get, patch, rollout). CLI calls are simpler than pulling in the kubernetes Python client for this narrow use case
+- **bash (run-e2e.sh):** Orchestration script extending the existing `verify-e2e.sh` pattern. Dependencies: `curl`, `jq`, `kubectl` -- already available
 
-**Key stack decisions validated:**
-- `snmp_info` implemented as `ObservableGauge<long>` (always value=1) with device attributes — matches Prometheus `target_info` convention
-- `snmp_gauge` as `ObservableGauge<double>`, `snmp_counter` as `ObservableCounter<long>` — correct TypeCode-to-instrument mapping
-- Push pipeline (App → OTLP gRPC → OTel Collector → `prometheusremotewriteexporter` → Prometheus) is the established pattern; do not mix with prometheus-net scrape endpoint
+**Explicitly rejected:** kubernetes Python client (overkill), pytest-xdist (shared state prevents parallelism), testcontainers (system already deployed on K8s), Selenium/Playwright (no browser UI), pytest-asyncio (no async code needed).
 
 ### Expected Features
 
-The MVP is well-defined. All P1 features are already represented in the reference architecture. The scope boundary is clear: this system is a collection and export agent, not an alerting engine, MIB browser, topology discovery tool, or TSDB. Staying narrow is a design strength.
+**Must have (28 test scenarios -- Categories 1-4):**
+- Pipeline counter verification (10 counters, all incrementing with correct `device_name` labels) -- TC-01 through TC-10
+- Business metric correctness (snmp_gauge/snmp_info with correct snmp_type, source, metric_name labels) -- TC-11 through TC-17
+- Unknown OID handling (unmapped OIDs resolve to metric_name="Unknown", still flow through pipeline) -- TC-18 through TC-21
+- OID map hot-reload (rename/remove/add OID mappings via ConfigMap, verify metric_name changes) -- TC-22 through TC-26
 
-**Must have (v1 table stakes):**
-- SNMP trap reception (UDP 162) with backpressure via bounded channels
-- Scheduled SNMP GET/GETBULK polling via Quartz, configurable per device
-- OID-to-metric-name resolution via flat Dictionary loaded from config
-- Three typed OTel instruments: `snmp_gauge`, `snmp_counter`, `snmp_info` (TypeCode-based selection)
-- OTel push to Prometheus via OTLP — the delivery mechanism for all metrics
-- Pipeline health metrics: `traps_received`, `traps_dropped`, `poll_success`, `poll_failure`, `oid_miss_rate`
-- Structured logging with correlation IDs propagated through all processing paths
-- K8s leader election — prevents duplicate metric export across pod replicas
-- Graceful handling of unreachable devices — circuit-breaker/backoff to avoid log flooding and poll queue blocking
+**Should have (8 test scenarios -- Categories 5-6):**
+- Device lifecycle (add/remove devices via ConfigMap, verify poll job creation/removal) -- TC-27 through TC-31
+- ConfigMap watcher resilience (invalid JSON, missing keys, null values -- system retains previous config) -- TC-32 through TC-36
 
-**Should have (v1.x after validation):**
-- Hot-reloadable OID map (IOptionsMonitor or FileSystemWatcher) — needed after first firmware-update incident
-- Per-device polling intervals — Quartz job config per target is already supported
-- Trap storm protection / per-source-IP rate limiting — needed before first noisy device incident
-- SNMP v3 auth + encryption — SharpSnmpLib already supports it; config path is the work
-- SNMP Inform acknowledgment support — for higher-reliability trap delivery
-
-**Defer to v2+:**
-- OID walk / auto-discovery of device OIDs
-- Grafana dashboard provisioning (JSON/ConfigMap)
-- SNMP SET / configuration push (requires separate security design)
-- Built-in alerting engine, MIB browser, network topology discovery — all anti-features that duplicate existing tooling
+**Defer:**
+- Community string auth tests (TC-37 through TC-39) -- already well-covered by unit tests
+- Leader election gating tests (TC-40 through TC-42) -- TC-42 (failover) is too disruptive for automated E2E; document as manual verification
+- Performance/load testing, chaos testing, Grafana dashboard rendering -- separate disciplines, not E2E functional verification
 
 ### Architecture Approach
 
-The architecture follows a layered ingestion-pipeline-export model derived directly from the reference implementation. The key insight is that both trap and poll paths converge on a single MediatR notification type (`SnmpOidReceived`), so all cross-cutting concerns (logging, exception handling, OID resolution) are implemented once in behaviors rather than duplicated across ingestion paths. Role-gated metric export ensures multi-replica K8s deployments produce exactly one set of business metric series regardless of pod count.
+The test runner lives on the host machine (not in-cluster), matching the existing `verify-e2e.sh` pattern. It interacts with 4 integration surfaces: SNMP UDP (simulator <-> collector), ConfigMap K8s API (test runner -> watchers), Prometheus HTTP API (verification queries), and pod logs (evidence collection). A dedicated test simulator (`e2e-sim`) uses enterprise OID subtree `47477.999` to isolate from production OBP/NPB OIDs, with community string `Simetra.E2E-SIM`.
 
 **Major components:**
-1. **SnmpTrapListener (BackgroundService)** — binds UDP:162, runs listener middleware pipeline, routes per-device to BoundedChannel; never publishes to MediatR directly
-2. **DeviceChannelManager** — one BoundedChannel<TrapEnvelope> per device, DropOldest under load; decouples receipt rate from processing rate
-3. **ChannelConsumerService (BackgroundService)** — one Task per device channel; reads envelopes and publishes SnmpOidReceived per varbind to MediatR
-4. **MetricPollJob / StatePollJob (Quartz IJob)** — SNMP GET at configured intervals; bypasses channels; publishes SnmpOidReceived directly to MediatR
-5. **MediatR Behavior Pipeline** — LoggingBehavior → ExceptionBehavior → ValidationBehavior → OidResolutionBehavior → OtelMetricHandler (terminal)
-6. **MetricFactory (Singleton)** — instrument cache via ConcurrentDictionary; records snmp_gauge/snmp_counter/snmp_info with assembled label sets
-7. **K8sLeaseElection (BackgroundService + ILeaderElection)** — acquires coordination.k8s.io/v1 Lease; exposes volatile `IsLeader`; falls back to AlwaysLeaderElection outside K8s
-8. **MetricRoleGatedExporter** — wraps OtlpMetricExporter; passes Simetra.Leader meter only when leader; passes Instance + Runtime meters always
-9. **GracefulShutdownService (registered last, stops first)** — 5-step orchestrated shutdown with per-step CancellationTokenSource budgets
-10. **RotatingCorrelationService** — volatile global correlationId (epoch-scoped) + AsyncLocal operation-scoped ID; cleared in finally by all Quartz jobs
+1. **Test Simulator (e2e-sim)** -- Deterministic SNMP agent serving mapped + unmapped OIDs, sending traps on 10s intervals, controllable lifecycle via `kubectl scale`
+2. **Test Runner (run-e2e.sh)** -- Sequential scenario orchestration with ConfigMap snapshot/restore, Prometheus polling, log evidence collection, and plain-text report output
+3. **ConfigMap Fixtures (tests/e2e/fixtures/)** -- OID map entries and device config for E2E-SIM, merged into existing ConfigMaps via extract-jq-apply pattern
+4. **K8s Manifest (e2e-simulator.yaml)** -- Deployment + Service following exact same pattern as existing OBP/NPB simulator manifests
 
 ### Critical Pitfalls
 
-These pitfalls have HIGH recovery cost or are non-obvious implementation traps. Address them in the phase where they are introduced, not after.
+1. **OTel 15-second export blind spot** -- Metrics take 15-25s to reach Prometheus. Use poll-until-satisfied with 30s timeout and 3s interval, never fixed sleeps. Build the polling utility as the first deliverable.
 
-1. **OTel cardinality explosion** — design label taxonomy before creating any instruments; never use raw OID strings, IP addresses, or request IDs as label values; set `CardinalityLimit` via OTel View API; OTel SDK silently drops data above 2,000 unique series per instrument; Prometheus series migration after the fact is HIGH cost
-2. **Counter32/Counter64 wrap-around misread as traffic spike** — implement wrap-aware delta formula before any counter metrics reach dashboards; also poll `sysUpTime` every cycle to detect device reboots (which reset counters to zero and are indistinguishable from wrap-around); bad historical data in Prometheus cannot be corrected retroactively
-3. **MediatR ForeachAwaitPublisher fails fast on first handler exception** — the default notification publisher stops at the first failing handler; if OtelMetricHandler runs after a failing handler, metrics are silently dropped; switch to TaskWhenAllPublisher or custom per-handler catch wrapping at pipeline design time
-4. **SharpSnmpLib ObjectStore not thread-safe** — `SnmpEngine` dispatches to CLR thread pool; concurrent trap handling writes to ObjectStore cause data corruption under load; avoid ObjectStore entirely for trap listener use cases and route to per-device channels instead (already in design)
-5. **K8sLeaseElection dual-registration DI pitfall** — registering as both `ILeaderElection` singleton and `IHostedService` creates two separate instances; the hosted service updates its own `_isLeader` flag while exporters read from a different instance that never changes; always register the concrete type first and resolve both registrations from the same singleton instance
-6. **GracefulShutdownService registration order** — .NET Generic Host stops hosted services in reverse registration order; GracefulShutdownService must be registered last to stop first; the 5-step shutdown sequence (lease release → listener stop → scheduler standby → channel drain → telemetry flush) depends on this
+2. **Prometheus 5-minute staleness window** -- Removed metrics persist for 5 minutes. Never verify removal by checking for absence. Instead verify via metric_name="Unknown" label change (OID removal) or counter stagnation (device removal).
 
----
+3. **Leader election gaps** -- Business metrics (snmp_gauge/snmp_info) only export from the leader pod. Always verify leadership state before asserting on business metrics. Pipeline counters export from all instances and are safe to query without leader checks.
+
+4. **Test isolation via cumulative counters** -- OTel uses cumulative temporality; counters never reset. Never assert absolute counter values. Record before/after values and assert on deltas. Filter all counter queries by `device_name` to exclude heartbeat noise.
+
+5. **ConfigMap propagation timing** -- K8s API watch events take 1-3s to reach all replicas (up to 10s edge case). Wait for reload log evidence from all pods before querying Prometheus.
 
 ## Implications for Roadmap
 
-The architecture research provides an explicit build-order dependency graph with 7 layers. These map directly to phases. The cardinality pitfall and counter delta pitfall both require design work before implementation begins in their respective phases — do not defer design decisions to "we'll figure it out when it breaks."
+Based on research, the build follows a strict dependency chain. Each phase produces a standalone deliverable that can be validated before the next phase begins.
 
-### Phase 1: Infrastructure Foundation
+### Phase 1: Test Simulator
 
-**Rationale:** Every other component depends on this layer. DI host setup, configuration loading with ValidateOnStart, OTel provider registration (all three signal types), and leader election skeleton must exist before any ingestion or pipeline work begins. No component can be tested without a host.
-**Delivers:** Running .NET 9 Generic Host with OTel SDK wired, IConfiguration loaded and validated, AlwaysLeaderElection stub for local dev, OTLP exporter configured (endpoint only, no metrics yet), structured logging pipeline active
-**Addresses features:** Configuration via environment/config file, structured logging foundation
-**Avoids pitfall:** OTel version mismatch (all three OTel packages at 1.15.0 from day 1); GracefulShutdownService registered as last hosted service from day 1
+**Rationale:** Everything depends on having a controllable SNMP device. The simulator can be validated standalone before any test infrastructure exists.
+**Delivers:** `simulators/e2e/e2e_simulator.py`, Dockerfile, K8s manifest, OID map fixture entries
+**Addresses:** Test simulator requirements from FEATURES.md (9 of 42 scenarios require it)
+**Avoids:** Anti-Pattern 2 (modifying existing simulators) -- uses dedicated `.999` OID space
 
-### Phase 2: Device Registry and OID Map
+### Phase 2: Test Harness Framework + Pipeline Counter Verification
 
-**Rationale:** Both ingestion paths (trap listener and Quartz poller) require DeviceRegistry (IP → DeviceInfo) and OID flat Dictionary before they can resolve anything. Building and validating these lookup structures before wiring ingestion ensures OID resolution is correct and cardinality-bounded before first metrics are emitted.
-**Delivers:** DeviceRegistry singleton populated from DevicesOptions; OID Dictionary loaded from appsettings; OidResolutionBehavior unit-testable in isolation; label taxonomy documented and cardinality-counted against target device fleet
-**Addresses features:** OID-to-human-readable metric name resolution, device-agnostic operation
-**Avoids pitfall:** Cardinality explosion — label set designed and verified against device count before any instruments are created; linear OID lookup replaced with O(1) Dictionary from the start
+**Rationale:** Establishes the test framework (polling utility, log capture, report format) using only existing OBP/NPB simulators -- no test simulator dependency. Pipeline counters are the simplest verification target and prove the framework works.
+**Delivers:** `tests/e2e/run-e2e.sh` with pre-flight checks, Prometheus query utilities, Phase 1 scenarios (TC-01 through TC-10)
+**Addresses:** FEATURES Category 1 (pipeline counters), 10 test scenarios
+**Avoids:** Pitfall 1 (fixed sleeps), Pitfall 4 (absolute counter values), Pitfall 9 (heartbeat contamination)
 
-### Phase 3: MediatR Pipeline (Behaviors and Handler)
+### Phase 3: Test Simulator Integration + Business Metric Verification
 
-**Rationale:** The MediatR pipeline is the central processing contract. Both ingestion paths publish to it. Build and unit-test all behaviors and OtelMetricHandler before wiring any ingestion — this makes the terminal handler independently verifiable with mock notifications.
-**Delivers:** LoggingBehavior, ExceptionBehavior, ValidationBehavior, OidResolutionBehavior (using Phase 2 registry), OtelMetricHandler with MetricFactory instrument cache; notification publisher strategy decided (TaskWhenAllPublisher or custom per-handler catch); snmp_gauge/snmp_counter/snmp_info instruments created and verified via dotnet-counters
-**Addresses features:** Three metric instruments (TypeCode-based), pipeline health metrics foundation
-**Avoids pitfall:** MediatR ForeachAwaitPublisher fail-fast — publisher strategy set before any multi-handler integration; MetricFactory instrument creation cached (not per-invocation)
+**Rationale:** First phase that deploys the test simulator and exercises ConfigMap manipulation (add E2E-SIM device + OID entries). The ConfigMap snapshot/restore pattern built here is reused by all subsequent mutation phases.
+**Delivers:** ConfigMap fixture files, merge/restore logic, Phase 2 scenarios (TC-11 through TC-21)
+**Addresses:** FEATURES Categories 2-3 (business metric correctness, unknown OID handling), 11 test scenarios
+**Avoids:** Pitfall 3 (leader gaps -- verify leadership first), Pitfall 5 (ConfigMap propagation -- wait for reload logs)
 
-### Phase 4: Trap Ingestion (Listener, Channels, Consumer)
+### Phase 4: OID Map Mutation + Device Lifecycle Tests
 
-**Rationale:** Trap ingestion is the primary async event path. SnmpTrapListener, DeviceChannelManager, and ChannelConsumerService must be built together — they form a single flow and cannot be tested in isolation without each other. The anti-pattern (publishing from the listener directly) must be explicitly avoided here.
-**Delivers:** UDP:162 listener receiving traps; per-device BoundedChannel with DropOldest; ChannelConsumerService publishing SnmpOidReceived per varbind; listener middleware pipeline (error handling, correlation ID stamping, logging); traps_received and traps_dropped counters active
-**Addresses features:** SNMP trap reception, graceful handling of unreachable devices, pipeline health metrics
-**Avoids pitfall:** SharpSnmpLib ObjectStore thread safety (avoided by design — no ObjectStore use); UDP listener never publishes to MediatR directly (anti-pattern 1); SNMPv3 time window rejection logging wired even if v3 not yet enabled
+**Rationale:** Depends on Phase 3's ConfigMap infrastructure being proven stable. These are the most operationally valuable tests -- they verify the system handles configuration changes correctly at runtime.
+**Delivers:** Phases 3-5 scenarios (TC-22 through TC-31)
+**Addresses:** FEATURES Categories 4-5 (OID map hot-reload, device lifecycle), 10 test scenarios
+**Avoids:** Pitfall 2 (staleness -- verify via label changes not absence), Pitfall 5 (propagation -- per-pod log verification)
 
-### Phase 5: Poll Ingestion (Quartz Scheduling)
+### Phase 5: Watcher Resilience + Trap Verification + Report
 
-**Rationale:** Poll jobs are the baseline collection path for devices that don't send traps for all state changes. They depend on Phase 3 (MediatR pipeline must exist to receive publications) and Phase 2 (DeviceRegistry and PollDefinitionRegistry). Poll jobs bypass channels (they publish directly to MediatR) so they can be built and tested against the Phase 3 pipeline without Phase 4.
-**Delivers:** MetricPollJob and StatePollJob (Quartz IJob, [DisallowConcurrentExecution]); per-device SNMP GET with 80%-of-interval timeout; ProcessingCoordinator dual-branch (metrics always; StateVector for Module source only); SCHED-08 correlation ID capture before execution; liveness stamp in finally block
-**Addresses features:** Scheduled SNMP GET/GETBULK polling, per-device graceful unreachability handling (error budget, backoff)
-**Avoids pitfall:** Quartz thread pool starvation — pool sized relative to device count × poll frequency × SNMP timeout from configuration; SNMP poll wrapped in CancellationToken with timeout; AsyncLocal OperationCorrelationId cleared in finally
-
-### Phase 6: Telemetry Export and Leader Election
-
-**Rationale:** Role-gated export requires a working pipeline (Phases 3-5) to have metrics to gate. K8sLeaseElection and MetricRoleGatedExporter can be built in parallel with Phases 4-5 but must be integrated and verified with a two-instance test before any production deployment.
-**Delivers:** K8sLeaseElection (coordination.k8s.io/v1 Lease); AlwaysLeaderElection fallback for local dev; MetricRoleGatedExporter (Simetra.Leader gated, Instance + Runtime always); SimetraLogEnrichmentProcessor (site/role/correlationId on all log lines); two-instance test confirming exactly one set of business metric series in Prometheus
-**Addresses features:** K8s leader election, pipeline health as first-class metrics, leader-based business metric export
-**Avoids pitfall:** K8sLeaseElection dual-registration DI pitfall — register concrete type once, resolve both interfaces from same singleton; duplicate metric series from multiple instances
-
-### Phase 7: Auxiliary Jobs, Graceful Shutdown, and Health Probes
-
-**Rationale:** Heartbeat and correlation rotation depend on the full trap path being functional (HeartbeatJob sends a trap to 127.0.0.1 which must traverse the complete pipeline). Graceful shutdown must be verified end-to-end with an actual SIGTERM under load. Health probes require all components to be running to assert staleness correctly.
-**Delivers:** HeartbeatJob (self-trap proving pipeline alive); CorrelationJob (rotating global correlationId); GracefulShutdownService (5-step: lease release → listener stop → scheduler standby → channel drain → telemetry flush); LivenessHealthCheck (staleness-based via ILivenessVectorService); StartupHealthCheck and ReadinessHealthCheck; OTel ForceFlush verified on shutdown
-**Addresses features:** System self-health metrics, structured logging with correlation IDs (rotation)
-**Avoids pitfall:** MeterProvider disposed without flush — ForceFlush explicitly called in Step 5 with independent CTS; Quartz job cancellation verified on shutdown (no hung threads)
+**Rationale:** These are the remaining scenarios that round out coverage. Watcher resilience tests (invalid JSON, missing keys) are defensive; trap verification exercises the UDP path. Final report generation wraps the suite.
+**Delivers:** Phases 6-8 scenarios (TC-32 through TC-39), comprehensive report output
+**Addresses:** FEATURES Categories 6-7 (ConfigMap resilience, community string auth), 8 test scenarios
+**Avoids:** Pitfall 7 (UDP unreliability -- retry trap sends), Anti-Pattern 5 (not snapshotting ConfigMaps)
 
 ### Phase Ordering Rationale
 
-- Phases 1-2 are pure prerequisites: nothing can run without a host, and nothing can resolve without the registry and OID map.
-- Phase 3 is intentionally decoupled from ingestion: the MediatR pipeline can be built and fully unit-tested using mock notifications before any network I/O exists.
-- Phases 4 and 5 can proceed in parallel after Phase 3 — they share no direct dependency on each other, only on Phases 1-3.
-- Phase 6 can begin in parallel with Phases 4-5 but integration (two-instance test) must follow Phase 4-5 completion.
-- Phase 7 requires Phase 4 completion (heartbeat loopback) and naturally follows all other phases.
-- The cardinality pitfall is addressed in Phase 2 (before instruments exist). The counter delta pitfall must be addressed in Phase 5 (before counter metrics reach Prometheus). Both have HIGH retroactive recovery cost — they cannot be deferred.
+- **Simulator first** because 9 test scenarios require it and the framework needs a controllable SNMP device for anything beyond pipeline counter verification
+- **Framework + pipeline counters second** because they establish the polling, log capture, and reporting patterns that every subsequent phase reuses, and they can run without the test simulator
+- **Business metrics third** because they exercise the full data path (SNMP -> MediatR -> OTel -> Prometheus) and introduce ConfigMap manipulation patterns
+- **Mutations fourth** because they depend on proven ConfigMap infrastructure and are the highest-value operational tests
+- **Resilience + traps last** because they are defensive edge cases with lower business impact -- valuable but not blocking
 
 ### Research Flags
 
 Phases likely needing deeper research during planning:
-- **Phase 5 (Poll Ingestion):** Counter delta engine (wrap-around + sysUpTime reboot detection) is moderately complex and has no standard .NET library — requires explicit implementation design before coding; also verify Quartz thread pool sizing formula against expected device count
-- **Phase 6 (Leader Election):** MetricRoleGatedExporter uses reflection to propagate ParentProvider (internal setter on BaseExporter<Metric>) — this brittleness point needs verification against OTel 1.15.0 internals and a test that detects if the API changes
+- **Phase 4 (Device Lifecycle):** The DynamicPollScheduler reconciliation timing is complex. May need to verify exact Quartz job teardown behavior and liveness vector cleanup during planning.
 
-Phases with established patterns (skip research-phase):
-- **Phase 1 (Infrastructure Foundation):** .NET Generic Host + OTel SDK registration is well-documented with official examples
-- **Phase 3 (MediatR Pipeline):** MediatR behavior pipeline pattern is thoroughly documented; the specific behaviors (logging, exception, validation) are standard
-- **Phase 4 (Trap Ingestion):** BoundedChannel per device with DropOldest and BackgroundService consumer is a standard .NET channels pattern; SharpSnmpLib listener setup is documented
-- **Phase 7 (Graceful Shutdown):** IHostedService shutdown ordering is well-documented .NET behavior; the 5-step sequence is fully specified in the reference implementation
-
----
+Phases with standard patterns (skip research-phase):
+- **Phase 1 (Test Simulator):** Existing OBP/NPB simulators provide a complete reference implementation. Copy the pattern.
+- **Phase 2 (Framework + Counters):** Well-established pattern from existing `verify-e2e.sh`. Extend, don't reinvent.
+- **Phase 3 (Business Metrics):** Prometheus HTTP API queries are straightforward. Leader verification is the only nuance (documented in Pitfall 3).
+- **Phase 5 (Resilience + Traps):** ConfigMap error handling is simple code paths (3-line guards). Trap retry is straightforward.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | All packages verified on NuGet with version, TFM, and license as of 2026-03-04; OTel push pipeline cross-referenced with OTel official docs |
-| Features | MEDIUM | Table stakes sourced from multiple industry surveys (consistent signal); differentiator and anti-feature analysis is domain reasoning with MEDIUM confidence; MVP definition is strong |
-| Architecture | HIGH | Derived directly from reference implementation at src/Simetra/ — this is not inferred, it is read from source; patterns confirmed against .NET and OTel docs |
-| Pitfalls | HIGH | Counter wrap-around sourced from Cisco RFC and RFC1155; OTel cardinality from OTel official docs; MediatR publisher pitfall from library changelog; Quartz pitfalls from official best-practices docs |
+| Stack | HIGH | All versions verified against PyPI. Stack aligns with existing simulator ecosystem. No novel dependencies. |
+| Features | HIGH | All 42 test scenarios derived directly from codebase analysis of shipped features. Every scenario maps to a specific code path. |
+| Architecture | HIGH | Architecture mirrors existing `verify-e2e.sh` pattern and simulator deployment patterns. No architectural novelty. |
+| Pitfalls | HIGH | Critical pitfalls verified against OTel SDK source, Prometheus remote write spec, and K8s API watch documentation. Timing constants extracted from actual source code. |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **MediatR publisher strategy for parallel handlers:** TaskWhenAllPublisher runs handlers concurrently and shares the DI scope — if any handler uses a non-thread-safe service (EF Core DbContext), this causes race conditions. Audit all handler dependencies before enabling parallel dispatch. If handlers are all stateless/concurrent-safe, TaskWhenAllPublisher is the right choice; otherwise implement per-handler try/catch in a custom sequential publisher.
-- **MetricRoleGatedExporter ParentProvider reflection:** Uses reflection to set an internal property on BaseExporter<Metric>. This works in OTel 1.15.0 but is fragile across OTel SDK version upgrades. Consider filing a feature request with the OTel .NET team for a supported API, or pinning the OTel version strictly and adding an integration test that detects breakage.
-- **Counter delta engine design:** The wrap-around detection formula and sysUpTime-based reboot detection need explicit unit tests with synthetic counter values before any counter metrics reach production. The "looks done but isn't" checklist in PITFALLS.md provides the exact test cases.
-- **SNMPv3 scope:** The reference implementation handles v2c only. If the target device fleet includes v3-only devices, the auth/privacy config path needs design work in Phase 4 or 5 before device onboarding. SharpSnmpLib supports v3 natively — no library change required, but EngineID management and key exchange add complexity.
-
----
+- **Leader election failover test (TC-42):** Intentionally deferred as manual-only. Pod kill is too disruptive for automated E2E. Run once, record evidence, document results.
+- **K8s watch reconnection (TC-36):** Hard to trigger deterministically. Watch connections close naturally every ~30 minutes. Verify via log observation during long-running operation, not as an automated test.
+- **OTel export interval coupling:** The 15-second export interval drives the 30-second test timeout budget. If this changes in a future release, test timeouts must be adjusted accordingly.
+- **pytest vs bash decision:** STACK.md recommends pytest; ARCHITECTURE.md describes a bash runner extending `verify-e2e.sh`. Both are viable. Recommendation: **start with bash** to stay consistent with the existing `verify-e2e.sh` pattern and avoid introducing a Python test dependency for the runner. Migrate to pytest only if the suite exceeds ~500 lines or needs parameterized test cases.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- `src/Simetra/` reference implementation (read directly) — architecture, patterns, component responsibilities, anti-patterns
-- [NuGet: Lextm.SharpSnmpLib 12.5.7](https://www.nuget.org/packages/Lextm.SharpSnmpLib) — version and TFM verified
-- [NuGet: Quartz 3.16.0](https://www.nuget.org/packages/Quartz) — version, .NET 9 target confirmed
-- [NuGet: OpenTelemetry 1.15.0](https://www.nuget.org/packages/OpenTelemetry) — stable, net9.0 target
-- [NuGet: KubernetesClient 19.0.2](https://www.nuget.org/packages/KubernetesClient) — Apache-2.0, net9.0 target
-- [OTel .NET Metrics Best Practices](https://opentelemetry.io/docs/languages/dotnet/metrics/best-practices/) — cardinality limits, instrument creation patterns, info metric pattern
-- [RFC 3414](https://datatracker.ietf.org/doc/html/rfc3414) — SNMPv3 USM 150-second time window
-- [Cisco SNMP Counter FAQ](https://www.cisco.com/c/en/us/support/docs/ip/simple-network-management-protocol-snmp/26007-faq-snmpcounter.html) — Counter32/Counter64 wrap-around behavior
-- [Quartz.NET Best Practices](https://www.quartz-scheduler.net/documentation/best-practices.html) — thread pool sizing, admin UI exposure
+- Codebase analysis: `PipelineMetricService.cs`, `OtelMetricHandler.cs`, `OidMapService.cs`, `OidMapWatcherService.cs`, `DeviceWatcherService.cs`, `MetricRoleGatedExporter.cs`, `SnmpTrapListenerService.cs`, `DeviceUnreachabilityTracker.cs`, `ServiceCollectionExtensions.cs`
+- Codebase analysis: `simulators/obp/obp_simulator.py`, `simulators/npb/` -- simulator architecture patterns
+- Codebase analysis: `deploy/k8s/verify-e2e.sh` -- existing E2E verification pattern
+- [Prometheus Remote Write Spec](https://prometheus.io/docs/specs/prw/remote_write_spec/) -- staleness marker behavior
+- [Prometheus HTTP API](https://prometheus.io/docs/prometheus/latest/querying/api/) -- query endpoints
+- [OTel Collector Issue #27893](https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/27893) -- remote write staleness gap
 
 ### Secondary (MEDIUM confidence)
-- [MediatR parallel notifications — Milan Jovanovic](https://www.milanjovanovic.tech/blog/how-to-publish-mediatr-notifications-in-parallel) — TaskWhenAllPublisher pattern and DI scope caveat
-- [SharpSnmpLib agent development docs](https://docs.sharpsnmp.com/samples/agent-development.html) — ObjectStore thread-safety limitation
-- [OTel Prometheus Remote Write architecture](https://oneuptime.com/blog/post/2026-02-06-prometheus-remote-write-opentelemetry-collector/view) — push pipeline pattern
-- [OTel graceful shutdown discussion](https://github.com/open-telemetry/opentelemetry-dotnet/discussions/3614) — ForceFlush requirement on shutdown
-- [Packet Pushers: sysUpTime reboot detection](https://packetpushers.net/blog/catch-unexpected-reboots-through-monitoring-sysuptimeinstance/) — uptime-based counter reset detection
-- [NuGet: MediatR 12.5.0 / 14.1.0](https://www.nuget.org/packages/MediatR) — license status, community tier eligibility
-
-### Tertiary (LOW confidence)
-- Network monitoring industry surveys (Domotz, Netflow Logic, WhatsUp Gold) — feature expectations for SNMP monitoring tools; consistent signal across sources
-- [Prometheus leader election HA duplicate metrics](https://medium.com/yotpoengineering/prometheus-operator-with-leader-election-solving-duplicate-remote-write-metrics-in-ha-setup-8b6581d10b45) — single community source; pattern consistent with OTel design
+- [K8s Issue #30189](https://github.com/kubernetes/kubernetes/issues/30189) -- ConfigMap watch propagation delays
+- PyPI version verification: pytest 9.0.2, requests 2.32.5, tenacity 9.1.4, pysnmp 7.1.22
 
 ---
-*Research completed: 2026-03-04*
+*Research completed: 2026-03-09*
 *Ready for roadmap: yes*

@@ -1,591 +1,586 @@
-# Architecture Research
+# Architecture: E2E System Verification
 
-**Domain:** SNMP monitoring system — C# .NET 9, MediatR pipeline, OTel push to Prometheus/Grafana
-**Researched:** 2026-03-04
-**Confidence:** HIGH (primary source: reference implementation at src/Simetra/ read directly)
+**Domain:** E2E test infrastructure for K8s-based SNMP monitoring pipeline
+**Researched:** 2026-03-09
+**Confidence:** HIGH (based on direct codebase analysis of all integration surfaces)
+
+## Current System Architecture (Baseline)
+
+The system being tested:
+
+```
+                        +-----------------+
+                        | simetra-oidmaps |  (ConfigMap, K8s API watch)
+                        | simetra-devices |  (ConfigMap, K8s API watch)
+                        +--------+--------+
+                                 |
+                          K8s API watch (sub-second)
+                                 |
++---------------+    UDP    +----v-----------+    OTLP/gRPC    +---------------+   promremotewrite   +------------+
+| OBP Simulator |---------->|                |---------------->|               |-------------------->|            |
+| (port 161)    |   traps   | snmp-collector |                 | OTel Collector|                     | Prometheus |
++---------------+   +poll   | (3 replicas)   |                 |               |                     | :9090      |
+                    |       |                |                 +---------------+                     +------------+
++---------------+   |       | MediatR pipe:  |
+| NPB Simulator |---+       | Log->Exc->Val  |
+| (port 161)    |           | ->OidRes->Otel |
++---------------+           +----------------+
+                               |
+                        Quartz poll jobs
+                        (10s interval)
+```
+
+**Integration surfaces the E2E tests must exercise:**
+
+1. **SNMP UDP port 10162** on snmp-collector pods -- traps arrive here via headless service `simetra-pods`
+2. **SNMP UDP port 161** on simulator services -- polls originate from snmp-collector MetricPollJob
+3. **ConfigMaps** `simetra-oidmaps` and `simetra-devices` -- K8s API watch triggers reload in OidMapWatcherService / DeviceWatcherService
+4. **Prometheus HTTP API** at `prometheus:9090` -- query endpoint for metric verification
+5. **Pod logs** via `kubectl logs` -- structured JSON logs for evidence collection
+
+## Recommended E2E Test Architecture
+
+### Overview
+
+```
++------------------+       kubectl apply/patch        +------------------+
+|                  |----(ConfigMap manipulation)------>| K8s API Server   |
+|   Test Runner    |                                  +------------------+
+|   (bash script)  |
+|                  |       Prometheus HTTP API         +------------------+
+|   Runs on host   |----(query for verification)----->| Prometheus :9090 |
+|   outside K8s    |       via port-forward            +------------------+
+|                  |
+|                  |       kubectl logs                +------------------+
+|                  |----(log evidence collection)----->| snmp-collector   |
+|                  |                                  | pods (x3)        |
+|                  |                                  +------------------+
+|                  |
+|                  |       kubectl apply/delete        +------------------+
+|                  |----(deploy/teardown)------------->| Test Simulator   |
+|                  |                                  | (e2e-sim, K8s)   |
++------------------+                                  +------------------+
+```
+
+**Key design decision:** The test runner lives on the host machine (not in-cluster). This matches the existing `deploy/k8s/verify-e2e.sh` pattern and avoids the complexity of in-cluster RBAC, ServiceAccounts, and log collection from inside the cluster.
+
+### Component Inventory
+
+| Component | Status | Location | Language |
+|-----------|--------|----------|----------|
+| Test Runner | **NEW** | `tests/e2e/run-e2e.sh` | Bash |
+| Test Simulator | **NEW** | `simulators/e2e/e2e_simulator.py` | Python |
+| Test Simulator Dockerfile | **NEW** | `simulators/e2e/Dockerfile` | Dockerfile |
+| Test Simulator K8s Manifest | **NEW** | `deploy/k8s/simulators/e2e-simulator.yaml` | YAML |
+| Test ConfigMap Fixtures | **NEW** | `tests/e2e/fixtures/` | JSON |
+| snmp-collector | **UNMODIFIED** | `src/SnmpCollector/` | C# |
+| OBP Simulator | **UNMODIFIED** | `simulators/obp/` | Python |
+| NPB Simulator | **UNMODIFIED** | `simulators/npb/` | Python |
+| Prometheus | **UNMODIFIED** | `deploy/k8s/monitoring/` | -- |
+| OTel Collector | **UNMODIFIED** | `deploy/k8s/monitoring/` | -- |
+
+### Design Principle: No SnmpCollector Modifications
+
+Per v1.4 requirements, this is a verification-only milestone. The test infrastructure is purely additive -- it deploys alongside the existing system, exercises it through its existing interfaces (SNMP UDP, ConfigMap API, Prometheus HTTP), and reports findings. Zero C# code changes.
 
 ---
 
-## Standard Architecture
+## Component Details
 
-### System Overview
+### 1. Test Simulator (`e2e-sim`)
 
-```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                          INGESTION LAYER (Layer 1-2)                         │
-│                                                                              │
-│  ┌──────────────────────────┐     ┌────────────────────────────────────────┐ │
-│  │  SnmpTrapListener        │     │  SnmpPoller (Quartz MetricPollJob)     │ │
-│  │  (BackgroundService)     │     │  [DisallowConcurrentExecution]         │ │
-│  │                          │     │                                        │ │
-│  │  UDP:162 → parse →       │     │  SNMP GET → ISnmpExtractor → bypass   │ │
-│  │  community check →       │     │  channels → straight to Layer 3/4     │ │
-│  │  middleware pipeline →   │     └────────────────────────────────────────┘ │
-│  │  device lookup →         │                      │                         │
-│  │  OID filter →            │                      │ (direct, no channel)    │
-│  │  channel write           │                      ↓                         │
-│  └──────────┬───────────────┘                                               │
-│             │                                                                │
-│             ↓ BoundedChannel<TrapEnvelope>                                  │
-│  ┌──────────────────────────┐                                               │
-│  │  DeviceChannelManager    │  one bounded channel per device               │
-│  │  DropOldest on full      │  SingleWriter=false, SingleReader=true        │
-│  └──────────┬───────────────┘                                               │
-│             │                                                                │
-│             ↓                                                                │
-│  ┌──────────────────────────┐                                               │
-│  │  ChannelConsumerService  │  one Task per device channel                  │
-│  │  (BackgroundService)     │  ReadAllAsync → consumer middleware →         │
-│  │                          │  ISnmpExtractor → IProcessingCoordinator      │
-│  └──────────┬───────────────┘                                               │
-└─────────────┼────────────────────────────────────────────────────────────────┘
-              │
-              ↓
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                          PIPELINE LAYER (Layer 3-4 equivalent)              │
-│                                                                             │
-│  ┌──────────────────────────────────────────────────────────────────────┐  │
-│  │                    MediatR Behavior Pipeline                          │  │
-│  │                                                                       │  │
-│  │  Publish(SnmpOidReceived)                                             │  │
-│  │       ↓                                                               │  │
-│  │  [LoggingBehavior]                                                    │  │
-│  │       ↓                                                               │  │
-│  │  [ExceptionBehavior]                                                  │  │
-│  │       ↓                                                               │  │
-│  │  [ValidationBehavior]                                                 │  │
-│  │       ↓                                                               │  │
-│  │  [OidResolutionBehavior]  ← looks up OID in flat Dictionary          │  │
-│  │       ↓                                                               │  │
-│  │  OtelMetricHandler        ← records snmp_gauge / snmp_counter        │  │
-│  └──────────────────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────────────────┘
-              │
-              ↓
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                          PROCESSING LAYER                                   │
-│                                                                             │
-│  ProcessingCoordinator                                                      │
-│  ├── Branch A: MetricFactory → System.Diagnostics.Metrics instruments      │
-│  │   (always runs, both trap and poll sources)                              │
-│  └── Branch B: StateVectorService → in-memory ConcurrentDictionary         │
-│      (Source=Module only; Configuration polls skip this branch)             │
-└─────────────────────────────────────────────────────────────────────────────┘
-              │
-              ↓
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                          TELEMETRY EXPORT LAYER                             │
-│                                                                             │
-│  ┌────────────────────────────┐   ┌────────────────────────────────────┐   │
-│  │  PeriodicExportingMetric   │   │  BatchActivityExportProcessor      │   │
-│  │  Reader                    │   │  (traces, role-gated)              │   │
-│  │       ↓                    │   └───────────────────┬────────────────┘   │
-│  │  MetricRoleGatedExporter   │                       │                    │
-│  │  ├── Simetra.Leader meter  │                       ↓                    │
-│  │  │   → leader only exports │   ┌────────────────────────────────────┐   │
-│  │  └── System.Runtime meter  │   │  OTLP Collector / Prometheus       │   │
-│  │      → all pods export     │   │  → Grafana dashboards              │   │
-│  └────────────────────────────┘   └────────────────────────────────────┘   │
-│                                                                             │
-│  OTLP Log Exporter (all pods, not role-gated)                              │
-│  + SimetraLogEnrichmentProcessor (adds site/role/correlationId)            │
-└─────────────────────────────────────────────────────────────────────────────┘
-              │
-              │ (parallel)
-              ↓
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                     LEADER ELECTION (K8s Lease API)                         │
-│                                                                             │
-│  K8sLeaseElection (BackgroundService + ILeaderElection)                     │
-│  coordination.k8s.io/v1 Lease → volatile bool _isLeader                    │
-│                                                                             │
-│  All instances active:                                                      │
-│  ├── ALL pods: pipeline metrics (Simetra.Instance meter) + logs + runtime  │
-│  └── LEADER only: business metrics (Simetra.Leader meter) + traces         │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+**Purpose:** Provide controllable SNMP responses for edge cases that OBP/NPB simulators cannot cover.
 
-### Component Responsibilities
+**Why a new simulator instead of extending OBP/NPB:**
+- OBP/NPB simulators represent real device behavior and must stay stable
+- E2E tests need deterministic, weird, and broken scenarios (unknown OIDs, specific trap sequences)
+- Test simulator can be deployed/torn down per scenario without disrupting other simulators
+- Community string `Simetra.E2E-SIM` avoids collision with existing devices
 
-| Component | Namespace / Type | Responsibility | Communicates With |
-|-----------|-----------------|----------------|-------------------|
-| SnmpTrapListener | BackgroundService | Bind UDP:162, parse traps, run listener middleware pipeline, route to device channels | DeviceRegistry, TrapFilter, DeviceChannelManager, TrapMiddlewarePipeline |
-| SnmpPoller (MetricPollJob) | Quartz IJob | SNMP GET at intervals, bypass channels, feed directly to extraction + processing | DeviceRegistry, PollDefinitionRegistry, ISnmpExtractor, ProcessingCoordinator |
-| StatePollJob | Quartz IJob | Module-defined state polls; same bypass-channel path as MetricPollJob | Same as MetricPollJob |
-| HeartbeatJob | Quartz IJob | Send SNMP trap to self (127.0.0.1) to prove pipeline alive | SharpSnmpLib Messenger |
-| CorrelationJob | Quartz IJob | Rotate global correlationId on schedule | RotatingCorrelationService |
-| DeviceRegistry | Singleton | Map IP → DeviceInfo and Name → DeviceInfo at O(1) | Built from DevicesOptions + IDeviceModule singletons |
-| DeviceChannelManager | Singleton | One BoundedChannel<TrapEnvelope> per device; DropOldest; drain on shutdown | SnmpListenerService (writer), ChannelConsumerService (reader) |
-| TrapPipelineBuilder | Singleton | Compose middleware delegates into a single TrapMiddlewareDelegate | Used by SnmpListenerService (intake) and ChannelConsumerService (consumer) |
-| ChannelConsumerService | BackgroundService | One Task per device; ReadAllAsync → consumer middleware → extract → process | DeviceChannelManager, ISnmpExtractor, ProcessingCoordinator |
-| MediatR Pipeline | IPipelineBehavior<T,R> | Logging → Exception → Validation → OidResolution behaviors | Published by Listener + Poller via MediatR.Publish(SnmpOidReceived) |
-| OtelMetricHandler | INotificationHandler | Record snmp_gauge / snmp_counter / snmp_info based on OID TypeCode | MetricFactory (System.Diagnostics.Metrics instruments) |
-| MetricFactory | Singleton | Create/cache Gauge/Counter instruments; record with base + static + dynamic labels | System.Diagnostics.Metrics Meter (Simetra.Leader) |
-| StateVectorService | Singleton | ConcurrentDictionary of last ExtractionResult per device:metric key | ProcessingCoordinator (writer), future CorrelationJob or StatePoll readers |
-| ProcessingCoordinator | Singleton | Branch A: metrics always; Branch B: StateVector only for Source=Module | MetricFactory, StateVectorService |
-| RotatingCorrelationService | Singleton | volatile string global correlationId + AsyncLocal operation-scoped correlationId | CorrelationJob (writer), all jobs (readers), middleware (stamper) |
-| K8sLeaseElection | BackgroundService + ILeaderElection | Acquire/release coordination.k8s.io/v1 Lease; expose IsLeader volatile bool | MetricRoleGatedExporter, RoleGatedExporter (traces), SimetraLogEnrichmentProcessor |
-| MetricRoleGatedExporter | BaseExporter<Metric> | Gate Simetra.Leader meter behind leadership; pass System.Runtime through always | OtlpMetricExporter (inner), ILeaderElection |
-| GracefulShutdownService | IHostedService (last) | Orchestrate 5-step shutdown with per-step time budgets | K8sLeaseElection, SnmpListenerService, IScheduler, DeviceChannelManager, MeterProvider |
-| LivenessHealthCheck | IHealthCheck | Compare job liveness stamps against interval × grace multiplier | ILivenessVectorService, IJobIntervalRegistry |
-| SimetraConsoleFormatter | ConsoleFormatter | Prefix log lines with [site] [role] [correlationId] | ICorrelationService, ILeaderElection |
+**Architecture:** Same pattern as OBP/NPB simulators -- pysnmp 7.1.22, asyncio event loop, DynamicInstance for mutable values, `supervised_task` for crash recovery.
 
----
+**OID Space:**
 
-## Recommended Project Structure
+Uses enterprise subtree `47477.999` to clearly separate from real device OIDs (`47477.10.21` for OBP, `47477.100` for NPB).
 
-Based on the reference implementation and MediatR conventions for the new system:
+| OID | Metric Name in oidmaps | SNMP Type | Purpose |
+|-----|------------------------|-----------|---------|
+| `1.3.6.1.4.1.47477.999.1.1.0` | `e2e_gauge_int` | Integer32 | Basic gauge, rename/remove test target |
+| `1.3.6.1.4.1.47477.999.1.2.0` | `e2e_gauge_g32` | Gauge32 | Gauge32 type verification |
+| `1.3.6.1.4.1.47477.999.1.3.0` | `e2e_counter32` | Counter32 | Counter32 recorded as gauge |
+| `1.3.6.1.4.1.47477.999.1.4.0` | `e2e_counter64` | Counter64 | Counter64 recorded as gauge |
+| `1.3.6.1.4.1.47477.999.1.5.0` | `e2e_timeticks` | TimeTicks | TimeTicks type verification |
+| `1.3.6.1.4.1.47477.999.1.6.0` | `e2e_info_str` | OctetString | snmp_info instrument verification |
+| `1.3.6.1.4.1.47477.999.1.7.0` | `e2e_info_ip` | IpAddress | IpAddress -> snmp_info verification |
+| `1.3.6.1.4.1.47477.999.1.8.0` | `e2e_info_oid` | ObjectIdentifier | OID type -> snmp_info verification |
+| `1.3.6.1.4.1.47477.999.2.1.0` | *(unmapped)* | Integer32 | Unknown OID -> metric_name="Unknown" |
+| `1.3.6.1.4.1.47477.999.2.2.0` | *(unmapped)* | OctetString | Unknown OID info type handling |
+
+**Trap OIDs:**
+
+| Trap OID | Varbind OID | Varbind Type | Purpose |
+|----------|-------------|--------------|---------|
+| `1.3.6.1.4.1.47477.999.3.1` | `.999.1.1.0` | Integer32 | Basic trap -> snmp_gauge with source=trap |
+| `1.3.6.1.4.1.47477.999.3.2` | `.999.2.1.0` | Integer32 | Trap with unmapped varbind OID -> Unknown |
+
+**Community string:** `Simetra.E2E-SIM` -- follows the existing `Simetra.{DeviceName}` convention that `CommunityStringHelper.TryExtractDeviceName` expects.
+
+**Trap timing:** Deterministic 10-second interval (not random 60-300s like OBP/NPB). This keeps E2E test run time manageable. Both trap OIDs fire alternately every 10s.
+
+**Environment variables (same pattern as OBP/NPB):**
+- `DEVICE_NAME=E2E-SIM`
+- `COMMUNITY=Simetra.E2E-SIM`
+- `TRAP_TARGET=simetra-pods.simetra.svc.cluster.local`
+- `TRAP_PORT=10162`
+- `TRAP_INTERVAL=10` (deterministic, not min/max range)
+
+**Dockerfile:** Identical to `simulators/obp/Dockerfile` -- same base image, same `requirements.txt` (pysnmp==7.1.22).
+
+**Health probe:** Same pysnmp GET self-check pattern as OBP/NPB, querying `.999.1.1.0` with `Simetra.E2E-SIM` community.
+
+### 2. Test Runner (`run-e2e.sh`)
+
+**Purpose:** Orchestrate test scenarios sequentially, verify outcomes via Prometheus and kubectl, generate a report.
+
+**Location:** `tests/e2e/run-e2e.sh`
+
+**Architecture:** Extends the existing `deploy/k8s/verify-e2e.sh` pattern. That script already demonstrates the correct approach: port-forward Prometheus, query the HTTP API, pass/fail with counts. The E2E runner adds:
+
+1. **Scenario sequencing** -- scenarios run one at a time in a defined order
+2. **ConfigMap manipulation** -- `kubectl get -> jq merge -> kubectl apply` for safe patching
+3. **ConfigMap snapshotting** -- save originals at start, restore on exit (even on failure)
+4. **Wait-for-condition** -- poll Prometheus with timeout (existing `wait_for_metric` pattern)
+5. **Log evidence** -- `kubectl logs --since=Xs` to capture relevant log lines per scenario
+6. **Cleanup** -- bash `trap EXIT` handler guarantees ConfigMap restore and test simulator teardown
+
+**Dependencies:** `curl`, `jq`, `kubectl` -- same as existing verify script, no new tools.
+
+**Execution model:**
 
 ```
-src/
-├── Monitoring.Agent/                  # Executable project
-│   ├── Program.cs                     # Host builder, DI registration, health endpoints
-│   ├── GlobalUsings.cs
-│   └── appsettings.json               # OID map (flat Dictionary), device config, OTLP endpoint
-│
-├── Monitoring.Core/                   # Domain types (if multi-project; can be single project)
-│   ├── Messages/
-│   │   └── SnmpOidReceived.cs         # MediatR INotification — the central event
-│   ├── Models/
-│   │   ├── OidMapEntry.cs             # Resolved OID metadata (name, type, unit)
-│   │   └── DeviceInfo.cs              # Device identity (name, IP, type)
-│   └── Abstractions/
-│       ├── ILeaderElection.cs
-│       └── ICorrelationService.cs
-│
-├── Ingestion/
-│   ├── SnmpTrapListener.cs            # BackgroundService → MediatR.Publish(SnmpOidReceived)
-│   └── SnmpPoller/
-│       └── MetricPollJob.cs           # Quartz IJob → MediatR.Publish(SnmpOidReceived)
-│
-├── Pipeline/
-│   ├── Behaviors/
-│   │   ├── LoggingBehavior.cs         # Outermost: log entry/exit with correlationId
-│   │   ├── ExceptionBehavior.cs       # Catch, log, suppress — never propagate to bus
-│   │   ├── ValidationBehavior.cs      # Validate OID received is well-formed
-│   │   └── OidResolutionBehavior.cs   # Lookup OID in map; enrich notification context
-│   └── Handlers/
-│       └── OtelMetricHandler.cs       # INotificationHandler: record gauge/counter/info
-│
-├── Telemetry/
-│   ├── K8sLeaseElection.cs            # coordination.k8s.io/v1 Lease
-│   ├── AlwaysLeaderElection.cs        # Local dev stub
-│   ├── MetricRoleGatedExporter.cs     # Gate business metrics behind leadership
-│   ├── SimetraLogEnrichmentProcessor.cs
-│   └── TelemetryConstants.cs          # Meter names, source names
-│
-├── Scheduling/
-│   ├── HeartbeatJob.cs                # Self-trap to prove pipeline alive
-│   └── CorrelationJob.cs              # Rotate correlationId on schedule
-│
-├── HealthChecks/
-│   ├── StartupHealthCheck.cs
-│   ├── ReadinessHealthCheck.cs
-│   └── LivenessHealthCheck.cs         # Staleness check via ILivenessVectorService
-│
-├── Configuration/
-│   ├── OidMapOptions.cs               # flat Dictionary<string, OidMapEntry>
-│   ├── DevicesOptions.cs
-│   ├── OtlpOptions.cs
-│   └── Validators/
-│       └── ...
-│
-├── Extensions/
-│   └── ServiceCollectionExtensions.cs  # Grouped AddX() methods, documented startup order
-│
-└── Lifecycle/
-    └── GracefulShutdownService.cs      # Registered LAST; stops FIRST
+run-e2e.sh
+  |
+  +-- Pre-flight: cluster reachable, pods healthy, Prometheus accessible
+  |
+  +-- Snapshot: save simetra-oidmaps and simetra-devices ConfigMaps
+  |
+  +-- Phase 1: Pipeline counter verification
+  |     Uses existing OBP/NPB (no test simulator needed)
+  |     Queries all 10 pipeline counter metrics
+  |
+  +-- Phase 2: Deploy test simulator + ConfigMap integration
+  |     kubectl apply e2e-simulator.yaml
+  |     Merge E2E-SIM entries into simetra-oidmaps and simetra-devices
+  |     Wait for poll metrics to appear in Prometheus
+  |
+  +-- Phase 3: Business metric mutations
+  |     Rename OID mapping -> verify new metric_name in Prometheus
+  |     Remove OID mapping -> verify metric_name="Unknown"
+  |     Restore original mapping -> verify original name returns
+  |
+  +-- Phase 4: Unknown OID verification
+  |     .999.2.1.0 and .999.2.2.0 are deliberately unmapped
+  |     Verify metric_name="Unknown" in Prometheus
+  |
+  +-- Phase 5: Device lifecycle
+  |     Remove E2E-SIM from devices -> verify polling stops
+  |     Re-add E2E-SIM -> verify polling resumes
+  |
+  +-- Phase 6: ConfigMap watcher resilience
+  |     Patch oidmaps with invalid JSON -> verify log warning, old map retained
+  |     Restore valid JSON -> verify reload succeeds
+  |
+  +-- Phase 7: Trap verification
+  |     Wait for trap from E2E-SIM in Prometheus (source="trap")
+  |     Verify unknown trap varbind OID classified as "Unknown"
+  |
+  +-- Phase 8: Cleanup + Report
+  |     Remove E2E-SIM from ConfigMaps
+  |     kubectl delete e2e-simulator
+  |     Restore ConfigMaps from snapshots
+  |     Generate summary report
 ```
 
-### Structure Rationale
+### 3. ConfigMap Fixture Files
 
-- **Ingestion/:** Separates intake (UDP trap reception, Quartz polling) from pipeline logic. Both converge on MediatR.Publish — the boundary is the notification.
-- **Pipeline/Behaviors/:** MediatR behaviors execute in registration order. Grouping them here makes ordering visible and testable in isolation.
-- **Pipeline/Handlers/:** Handlers are terminal. OtelMetricHandler is the single terminal handler for SnmpOidReceived.
-- **Telemetry/:** All OTel wiring including role gating isolated from business logic. Leader election lives here because it is a telemetry-export concern.
-- **Scheduling/:** Jobs that are not about SNMP extraction (heartbeat, correlation rotation) grouped separately from poll jobs.
-- **Extensions/:** Single file documents the DI startup sequence in comments — critical for understanding shutdown order.
-- **Lifecycle/:** GracefulShutdownService must be registered last. Isolating it prevents accidental re-ordering.
+**Location:** `tests/e2e/fixtures/`
 
----
+| File | Content | Used By |
+|------|---------|---------|
+| `e2e-oidmaps.json` | 8 OID map entries for E2E-SIM's mapped `.999.1.*` OIDs | Phase 2, 3 |
+| `e2e-device.json` | Device entry for E2E-SIM with service DNS, community, poll OIDs | Phase 2, 5 |
 
-## Architectural Patterns
+**ConfigMap patch strategy:** The runner does NOT use `kubectl patch` directly (which can corrupt JSON-within-YAML). Instead:
+1. `kubectl get configmap simetra-oidmaps -o jsonpath='{.data.oidmaps\.json}'` to get current JSON
+2. `jq '. + input' current.json fixture.json` to merge
+3. `kubectl create configmap simetra-oidmaps --from-file=oidmaps.json=merged.json --dry-run=client -o yaml | kubectl apply -f -`
 
-### Pattern 1: MediatR as Internal Event Bus
+This preserves all existing OBP/NPB entries while adding/modifying E2E-SIM entries.
 
-**What:** Both SnmpTrapListener and SnmpPoller publish `SnmpOidReceived` notifications. Neither knows about metrics, OID resolution, or logging. The pipeline behaviors and terminal handler are the only concern-aware code.
+### 4. Report Output
 
-**When to use:** When multiple ingestion paths (trap vs. poll) must share identical processing logic. The notification is the unification point.
-
-**Trade-offs:**
-- Pro: Adding a new ingestion source (e.g., SNMP v3, REST webhook) requires only implementing the publisher side.
-- Pro: Each behavior is independently unit-testable with a mock `next` delegate.
-- Con: MediatR publish is fire-and-forget for INotification; there is no return value. Ensure behaviors do not need to return data up the chain.
-- Con: Pipeline order is determined by DI registration order for behaviors — this must be documented and enforced.
-
-**Example:**
-```csharp
-// Listener publishes — no knowledge of what happens next
-await _mediator.Publish(new SnmpOidReceived(
-    Oid: oid,
-    Value: value,
-    SenderIp: senderIp,
-    ReceivedAt: DateTimeOffset.UtcNow), ct);
-
-// Behavior intercepts in order
-public sealed class LoggingBehavior<TNotification, TResponse>
-    : IPipelineBehavior<TNotification, TResponse>
-    where TNotification : INotification
-{
-    public async Task Handle(TNotification notification,
-        RequestHandlerDelegate<TResponse> next, CancellationToken ct)
-    {
-        _logger.LogDebug("Handling {Type}", typeof(TNotification).Name);
-        await next();
-    }
-}
-```
-
-### Pattern 2: BoundedChannel per Device (Trap Path Only)
-
-**What:** SnmpTrapListener writes TrapEnvelopes to a per-device BoundedChannel (DropOldest). ChannelConsumerService spawns one Task per device that reads via ReadAllAsync. Poll jobs bypass this entirely (PIPE-06): they go directly to extraction and processing.
-
-**When to use:** When traps are high-frequency bursts that may arrive faster than processing can consume. The channel decouples receipt rate from processing rate and provides backpressure.
-
-**Trade-offs:**
-- Pro: Trap receipt loop is never blocked by slow OID resolution or metric recording.
-- Pro: Per-device isolation — a slow device does not delay other devices.
-- Con: An in-memory channel means traps buffered at shutdown must be drained explicitly. GracefulShutdownService coordinates this: complete writers → wait for drain → flush telemetry.
-- Con: DropOldest silently discards the oldest entries under sustained overload. Log the drop callback at Debug level to make this visible.
-
-**Note for MediatR design:** The trap path publishes SnmpOidReceived per varbind from within the ChannelConsumerService (after channel read), not from the listener directly. The channel is an ingestion buffer; MediatR is the processing bus.
-
-```csharp
-// In ChannelConsumerService, after reading envelope from channel:
-foreach (var varbind in envelope.Varbinds)
-{
-    await _mediator.Publish(new SnmpOidReceived(
-        Oid: varbind.Id.ToString(),
-        Value: varbind.Data.ToString(),
-        SenderIp: envelope.SenderAddress,
-        DeviceName: device.Name,
-        CorrelationId: envelope.CorrelationId,
-        ReceivedAt: envelope.ReceivedAt), ct);
-}
-```
-
-### Pattern 3: MetricRoleGatedExporter for HA Multi-Pod Deployment
-
-**What:** All pods run simultaneously. Only the leader exports business metrics (Simetra.Leader meter). All pods export pipeline/runtime metrics (Simetra.Instance meter and System.Runtime). MetricRoleGatedExporter wraps OtlpMetricExporter and filters by meter name per export cycle.
-
-**When to use:** When running multiple replicas under K8s. Prevents duplicate metric time series from multiple pods while maintaining pod-level visibility for operational health.
-
-**Trade-offs:**
-- Pro: Near-instant failover — leader releases lease on SIGTERM; follower acquires within lease TTL.
-- Pro: Pipeline metrics (trap received count, poll executed count) are visible on all pods regardless of role.
-- Con: MetricRoleGatedExporter must propagate ParentProvider via reflection (internal setter on BaseExporter<Metric>). This is a brittleness point that should be tested.
-- Con: Cannot use AddOtlpExporter() convenience method because it constructs the exporter internally, preventing wrapping. Manual OtlpMetricExporter construction is required.
-
-### Pattern 4: Dual Correlation ID (Global + Per-Operation AsyncLocal)
-
-**What:** RotatingCorrelationService holds two IDs:
-1. `CurrentCorrelationId` — volatile string, rotated by CorrelationJob on schedule. Represents the current "epoch" or work interval.
-2. `OperationCorrelationId` — AsyncLocal<string?>, set for the duration of a single job execution or trap processing. Cleared in `finally`. Used by SimetraLogEnrichmentProcessor.
-
-**When to use:** When you need both "which interval did this belong to" (global) and "which specific operation generated this log line" (per-operation).
-
-**Trade-offs:**
-- Pro: Log lines during a job execution are tagged with the operation-scoped correlationId, which is the global ID captured at job start. This ties log lines to a specific scheduling interval.
-- Pro: CorrelationId rotating on schedule (not per-request) keeps cardinality low in OTLP log backends.
-- Con: AsyncLocal leaks if OperationCorrelationId is not cleared in finally. The pattern is: set in try, clear in finally.
-
-### Pattern 5: OID Map as Flat Dictionary in appsettings
-
-**What:** OID-to-metadata mapping is a `Dictionary<string, OidMapEntry>` in appsettings.json, not a database. OidResolutionBehavior looks up the OID string key and enriches the MediatR notification context with the resolved entry.
-
-**When to use:** When OID sets are static, known at deployment time, and small enough to live in configuration (hundreds, not thousands).
-
-**Trade-offs:**
-- Pro: Zero runtime dependency — no database read on the hot path.
-- Pro: Change an OID mapping by updating appsettings and restarting.
-- Con: No hot-reload without process restart (unless IOptionsMonitor is used, which adds complexity).
-- Con: Grows unwieldy beyond ~500 OIDs. At that scale, consider a SQLite/EF Core lookup with startup-time loading into a ConcurrentDictionary.
-
----
-
-## Data Flow
-
-### Trap Path (SnmpTrapListener → Metrics)
+**Format:** Plain text to stdout, same style as existing `verify-e2e.sh`:
 
 ```
-Network device
-    │  SNMP v2c trap UDP packet
-    ↓
-SnmpListenerService (BackgroundService)
-    │  MessageFactory.ParseMessages()
-    │  community check
-    │  listener middleware pipeline:
-    │    ErrorHandlingMiddleware (outermost)
-    │    CorrelationIdMiddleware (stamps correlationId onto envelope)
-    │    LoggingMiddleware
-    │  DeviceRegistry.TryGetDevice(senderIp) → DeviceInfo
-    │  TrapFilter.Match(varbinds, device) → PollDefinitionDto
-    ↓
-DeviceChannelManager.GetWriter(deviceName).WriteAsync(envelope)
-    ↓
-BoundedChannel<TrapEnvelope> [per device, DropOldest]
-    ↓
-ChannelConsumerService (BackgroundService, one Task per device)
-    │  ReadAllAsync()
-    │  consumer middleware pipeline (error handling + logging)
-    │  per varbind in envelope.Varbinds:
-    │    MediatR.Publish(SnmpOidReceived)
-    │        ↓ LoggingBehavior
-    │        ↓ ExceptionBehavior
-    │        ↓ ValidationBehavior
-    │        ↓ OidResolutionBehavior (lookup flat Dictionary)
-    │        ↓ OtelMetricHandler
-    │              MetricFactory.RecordMetrics()
-    │                  → Gauge<double>.Record() or Counter<double>.Add()
-    │                  labels: site_name, device_name, device_ip, device_type, + static + dynamic
-    ↓
-System.Diagnostics.Metrics instruments (Simetra.Leader meter)
-    ↓
-MetricRoleGatedExporter
-    ├── leader: export all meters via OtlpMetricExporter
-    └── follower: export only Simetra.Instance + System.Runtime
-    ↓
-OTLP Collector → Prometheus → Grafana
-```
+============================================================
+ Simetra E2E Verification Report
+ Date: 2026-03-09T14:30:00Z
+============================================================
 
-### Poll Path (Quartz → Metrics, bypasses channels)
+[Phase 1] Pipeline Counters
+  PASS  snmp_event_published_total (OBP-01)       3 series
+  PASS  snmp_event_handled_total (OBP-01)         3 series
+  PASS  snmp_poll_executed_total (OBP-01)          3 series
+  ...
 
-```
-Quartz scheduler fires MetricPollJob or StatePollJob
-    │  read correlationId (SCHED-08: capture BEFORE execution, scope as OperationCorrelationId)
-    │  DeviceRegistry.TryGetDeviceByName()
-    │  PollDefinitionRegistry.TryGetDefinition()
-    │  Messenger.GetAsync() [SharpSnmpLib SNMP GET, with 80% interval timeout]
-    ↓
-ISnmpExtractor.Extract(response, definition)
-    → ExtractionResult { Metrics, Labels, Definition }
-    ↓
-ProcessingCoordinator.Process(result, device, correlationId)  [or MediatR.Publish]
-    ├── Branch A: MetricFactory.RecordMetrics() [always]
-    └── Branch B: StateVectorService.Update() [Source=Module only]
-    ↓
-[same OTel export path as trap path]
-    ↓
-finally: ILivenessVectorService.Stamp(jobKey) [always, even on failure]
-```
+[Phase 3] Business Metric Mutations
+  PASS  OID rename: e2e_gauge_int -> e2e_gauge_renamed    1 series
+  PASS  OID remove: metric_name="Unknown"                 1 series
+  ...
 
-### Telemetry Export Flow
-
-```
-System.Diagnostics.Metrics instruments
-    ↓
-PeriodicExportingMetricReader (automatic, configured interval)
-    ↓
-MetricRoleGatedExporter.Export(batch)
-    ├── if leader: pass all metrics to OtlpMetricExporter
-    └── if follower: filter out Simetra.Leader metrics, pass remainder
-
-OtlpMetricExporter → OTLP endpoint (e.g., otel-collector:4317)
-    ↓
-Prometheus scrape / push → Grafana
-```
-
-### Shutdown Sequence (GracefulShutdownService, registered last → stops first)
-
-```
-SIGTERM received
-    ↓
-GracefulShutdownService.StopAsync() [5 time-budgeted steps]
-    │
-    ├── Step 1 (3s budget): K8sLeaseElection.StopAsync()
-    │     → DELETE lease → followers acquire immediately
-    │
-    ├── Step 2 (3s budget): SnmpListenerService.StopAsync()
-    │     → UDP socket closed → no new traps accepted
-    │
-    ├── Step 3 (3s budget): IScheduler.Standby()
-    │     → no new job fires, in-flight jobs complete
-    │
-    ├── Step 4 (8s budget): DeviceChannelManager.CompleteAll() + WaitForDrainAsync()
-    │     → writers completed → ChannelConsumerService Tasks finish naturally
-    │
-    └── Step 5 (5s budget, own CTS — always runs): ForceFlush MeterProvider + TracerProvider
-          → buffered metrics/traces sent before process exits
+Summary: 28/28 PASS, 0 FAIL
+RESULT: PASS
 ```
 
 ---
 
-## Scaling Considerations
+## Integration Points (Detailed)
 
-| Scale | Architecture Adjustments |
-|-------|--------------------------|
-| 1-5 pods | Single Deployment with K8s Lease; one leader exports business metrics. Current design handles this natively. |
-| 5-20 pods | Increase Quartz thread pool sizing (auto-scaled by job count already). Review BoundedChannel capacity if trap burst rates are high. |
-| 20+ pods | Consider partitioning devices across pod groups (each pod group responsible for a subnet). Leader election per group. OID map may need migration from appsettings to shared config source. |
-| 100+ devices | If OID map grows large (>500 entries), migrate from flat Dictionary in appsettings to startup-loaded ConcurrentDictionary from SQLite. |
+### Integration Point 1: SNMP UDP (Test Simulator <-> snmp-collector)
 
-### Scaling Priorities
+**Direction:** Bidirectional
 
-1. **First bottleneck — channel backpressure under sustained trap storm:** BoundedChannel with DropOldest silently drops oldest entries. Surface this via `snmp_trap_dropped` counter. Consider increasing capacity or adding a secondary processing pod.
-2. **Second bottleneck — Quartz thread pool exhaustion:** Default thread pool is sized to job count at startup. If SNMP GET timeouts accumulate, threads back up. `[DisallowConcurrentExecution]` prevents overlap per job key but does not prevent total thread exhaustion across all jobs. Monitor `quartz_thread_pool_active` if using Quartz OTel metrics.
-3. **Third bottleneck — OTLP export throughput:** PeriodicExportingMetricReader batches metrics on its own interval. If metric cardinality (unique label combinations) explodes (e.g., per-OID gauges × devices × sites), Prometheus scrape times and memory grow. Keep label cardinality bounded — avoid raw OID strings as label values.
+- **Poll path:** snmp-collector's `MetricPollJob` sends SNMP GET to `e2e-simulator.simetra.svc.cluster.local:161` (resolved by `DeviceRegistry` DNS resolution at startup/reload). Poll interval configured in `devices.json` (10s, matching existing OBP/NPB).
+- **Trap path:** e2e-sim sends SNMPv2c traps to `simetra-pods.simetra.svc.cluster.local:10162` (headless service selecting all snmp-collector pods). All 3 replicas receive the trap; only the leader exports the resulting business metric.
+
+**No code changes.** The existing `DynamicPollScheduler` reconciles Quartz jobs when `DeviceWatcherService` detects a ConfigMap change. Adding E2E-SIM to `simetra-devices` automatically creates a new poll job.
+
+### Integration Point 2: ConfigMap API (Test Runner -> K8s API -> snmp-collector)
+
+**Direction:** Test runner patches ConfigMaps; K8s API watch notifies snmp-collector pods.
+
+**ConfigMaps manipulated:**
+- `simetra-oidmaps` (key: `oidmaps.json`) -- Add/rename/remove e2e_* entries. Watched by `OidMapWatcherService`.
+- `simetra-devices` (key: `devices.json`) -- Add/remove E2E-SIM device. Watched by `DeviceWatcherService` which triggers `DynamicPollScheduler.ReconcileAsync`.
+
+**Watch behavior verified from source:**
+- `OidMapWatcherService` handles `Added` and `Modified` events, skips `Deleted` (retains current map)
+- Invalid JSON is caught by `JsonSerializer.Deserialize`, logged as error, skipped (old map retained)
+- `SemaphoreSlim` serializes concurrent reload requests
+- Watch auto-reconnects every ~30 minutes (K8s server-side timeout)
+
+**Critical safety requirement:** Tests MUST snapshot ConfigMaps before any mutation and restore them in a `trap EXIT` handler. A failed test leaving corrupted ConfigMaps breaks the entire system.
+
+### Integration Point 3: Prometheus HTTP API (Test Runner -> Prometheus)
+
+**Direction:** Test runner queries Prometheus for metric verification.
+
+**Access:** `kubectl port-forward svc/prometheus 9090:9090 -n simetra` (same as existing verify script).
+
+**Key queries:**
+
+| Verification | PromQL Query |
+|-------------|-------------|
+| All 10 pipeline counters exist | `snmp_event_published_total{job="snmp-collector"}` (and 9 others) |
+| E2E-SIM polled gauge metrics | `snmp_gauge{device_name="E2E-SIM",source="poll"}` |
+| E2E-SIM polled info metrics | `snmp_info{device_name="E2E-SIM",source="poll"}` |
+| E2E-SIM trap metrics | `snmp_gauge{device_name="E2E-SIM",source="trap"}` |
+| Unknown OID from poll | `snmp_gauge{device_name="E2E-SIM",metric_name="Unknown",source="poll"}` |
+| Unknown OID from trap | `snmp_gauge{device_name="E2E-SIM",metric_name="Unknown",source="trap"}` |
+| Renamed metric appears | `snmp_gauge{device_name="E2E-SIM",metric_name="e2e_gauge_renamed"}` |
+| Poll counter incrementing | `increase(snmp_poll_executed_total{device_name="E2E-SIM"}[1m]) > 0` |
+| Poll counter stopped | `increase(snmp_poll_executed_total{device_name="E2E-SIM"}[30s]) == 0` |
+
+**Prometheus metric name mapping (from PipelineMetricService):**
+
+| OTel Instrument | Prometheus Name | Labels |
+|-----------------|-----------------|--------|
+| `snmp.event.published` | `snmp_event_published_total` | `device_name` |
+| `snmp.event.handled` | `snmp_event_handled_total` | `device_name` |
+| `snmp.event.errors` | `snmp_event_errors_total` | `device_name` |
+| `snmp.event.rejected` | `snmp_event_rejected_total` | `device_name` |
+| `snmp.poll.executed` | `snmp_poll_executed_total` | `device_name` |
+| `snmp.trap.received` | `snmp_trap_received_total` | `device_name` |
+| `snmp.trap.auth_failed` | `snmp_trap_auth_failed_total` | `device_name` |
+| `snmp.trap.dropped` | `snmp_trap_dropped_total` | `device_name` |
+| `snmp.poll.unreachable` | `snmp_poll_unreachable_total` | `device_name` |
+| `snmp.poll.recovered` | `snmp_poll_recovered_total` | `device_name` |
+
+Business metrics (leader-only export via `SnmpCollector.Leader` meter):
+- `snmp_gauge` -- labels: `metric_name`, `oid`, `device_name`, `ip`, `source`, `snmp_type`
+- `snmp_info` -- labels: `metric_name`, `oid`, `device_name`, `ip`, `source`, `snmp_type`, `value`
+
+### Integration Point 4: Pod Logs (Test Runner -> kubectl)
+
+**Direction:** Test runner reads pod logs for evidence.
+
+**Log patterns to verify (from source code analysis):**
+
+| Scenario | Expected Log Pattern | Source Class |
+|----------|---------------------|--------------|
+| OID map reload | `"OID map reload complete: {OidCount} entries"` | OidMapWatcherService |
+| Watch event received | `"OidMapWatcher received {EventType} event"` | OidMapWatcherService |
+| Invalid JSON rejected | `"Failed to parse oidmaps.json from ConfigMap"` | OidMapWatcherService |
+| Missing key in ConfigMap | `"does not contain key oidmaps.json"` | OidMapWatcherService |
+| Device config reload | Device watcher equivalent logs | DeviceWatcherService |
+| Trap auth failure | `"Trap dropped: invalid community string"` | SnmpTrapListenerService |
+
+**Collection method:** `kubectl logs -n simetra -l app=snmp-collector --since=30s --all-containers` captures all 3 replicas. Pipe through `grep` for specific patterns.
 
 ---
 
-## Anti-Patterns
+## K8s Manifest Design: Test Simulator
 
-### Anti-Pattern 1: Publishing SnmpOidReceived from SnmpListenerService Directly
+The manifest follows the exact same pattern as `deploy/k8s/simulators/obp-deployment.yaml`:
 
-**What people do:** Publish the MediatR notification from within the trap receive loop, before the channel.
-
-**Why it's wrong:** The UDP receive loop is single-threaded. MediatR.Publish is awaited synchronously from the loop perspective. If OtelMetricHandler or any behavior is slow, the listener falls behind. Traps are lost (UDP has no acknowledgment). The channel exists specifically to decouple receipt rate from processing rate.
-
-**Do this instead:** Write to the channel in the listener. Publish MediatR notification from ChannelConsumerService after reading from the channel.
-
-### Anti-Pattern 2: Registering Two Instances of K8sLeaseElection
-
-**What people do:** Register `services.AddSingleton<ILeaderElection, K8sLeaseElection>()` and then separately `services.AddHostedService<K8sLeaseElection>()`.
-
-**Why it's wrong:** .NET DI creates TWO separate singleton instances — one for ILeaderElection consumers, one for the hosted service. The hosted service updates its internal `_isLeader` flag but consumers read from a different instance that never gets updated. All pods appear to be non-leaders from the exporter's perspective.
-
-**Do this instead:** Register the concrete type first, then resolve for both registrations:
-```csharp
-services.AddSingleton<K8sLeaseElection>();
-services.AddSingleton<ILeaderElection>(sp => sp.GetRequiredService<K8sLeaseElection>());
-services.AddHostedService(sp => sp.GetRequiredService<K8sLeaseElection>());
+```yaml
+# deploy/k8s/simulators/e2e-simulator.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: e2e-simulator
+  namespace: simetra
+  labels:
+    app: e2e-simulator
+    purpose: testing
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: e2e-simulator
+  template:
+    metadata:
+      labels:
+        app: e2e-simulator
+    spec:
+      containers:
+      - name: e2e-simulator
+        image: e2e-simulator:local
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 161
+          name: snmp
+          protocol: UDP
+        env:
+        - name: DEVICE_NAME
+          value: "E2E-SIM"
+        - name: TRAP_TARGET
+          value: "simetra-pods.simetra.svc.cluster.local"
+        - name: TRAP_PORT
+          value: "10162"
+        - name: TRAP_INTERVAL
+          value: "10"
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 100m
+            memory: 128Mi
+        livenessProbe:
+          exec:
+            command:
+            - python
+            - -c
+            - |
+              import sys
+              from pysnmp.hlapi.v3arch.asyncio import *
+              import asyncio
+              async def check():
+                  engine = SnmpEngine()
+                  err, _, _, _ = await get_cmd(
+                      engine,
+                      CommunityData('Simetra.E2E-SIM'),
+                      await UdpTransportTarget.create(('127.0.0.1', 161), timeout=3, retries=0),
+                      ContextData(),
+                      ObjectType(ObjectIdentity('1.3.6.1.4.1.47477.999.1.1.0'))
+                  )
+                  engine.close_dispatcher()
+                  sys.exit(1 if err else 0)
+              asyncio.run(check())
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: e2e-simulator
+  namespace: simetra
+  labels:
+    app: e2e-simulator
+spec:
+  selector:
+    app: e2e-simulator
+  ports:
+  - name: snmp
+    port: 161
+    targetPort: snmp
+    protocol: UDP
 ```
 
-### Anti-Pattern 3: GracefulShutdownService Not Registered Last
+---
 
-**What people do:** Register GracefulShutdownService early (e.g., right after telemetry) for convenience.
+## Data Flow: Example Scenario
 
-**Why it's wrong:** .NET Generic Host stops IHostedService instances in reverse registration order. If GracefulShutdownService is not the last registered, it will not be the first to stop. The shutdown sequence (lease release → listener stop → scheduler standby → channel drain → flush) depends on it running before any other hosted service stops.
+**OID map rename test** (Phase 3, Scenario A):
 
-**Do this instead:** Always call `services.AddSimetraLifecycle()` (which registers GracefulShutdownService) as the last DI registration call. Document this constraint prominently in the extension method's XML doc.
+```
+1. Test runner snapshots simetra-oidmaps ConfigMap
 
-### Anti-Pattern 4: OtelMetricHandler Creating Instruments on Every Invocation
+2. Test runner merges fixture into oidmaps.json:
+   Adds: "1.3.6.1.4.1.47477.999.1.1.0": "e2e_gauge_renamed"
+   (was: "e2e_gauge_int")
 
-**What people do:** Call `_meter.CreateGauge<double>(metricName)` inside the handler for each notification.
+3. kubectl apply triggers K8s API MODIFIED event
+   -> OidMapWatcherService receives event on all 3 pods
+   -> HandleConfigMapChangedAsync deserializes new JSON
+   -> OidMapService.UpdateMap replaces dictionary
+   -> Log: "OID map reload complete: N entries"
 
-**Why it's wrong:** System.Diagnostics.Metrics instruments should be created once and reused. Creating repeatedly (a) causes warnings/errors if the same meter is used, (b) adds unnecessary allocation on the hot path.
+4. Next MetricPollJob cycle (within 10s):
+   -> SNMP GET to e2e-simulator for .999.1.1.0
+   -> OidResolutionBehavior looks up in new map
+   -> Resolves to "e2e_gauge_renamed"
+   -> OtelMetricHandler records snmp_gauge{metric_name="e2e_gauge_renamed",...}
 
-**Do this instead:** Use ConcurrentDictionary as an instrument cache in MetricFactory (or equivalent), keyed by metric name. GetOrAdd creates on first call, returns existing on subsequent calls.
+5. OTel export (within 10s) -> OTel Collector -> prometheusremotewrite -> Prometheus
 
-### Anti-Pattern 5: Missing ExceptionBehavior Allows Exceptions to Propagate to MediatR Bus
+6. Test runner polls Prometheus (30s timeout, 5s interval):
+   Query: snmp_gauge{device_name="E2E-SIM",metric_name="e2e_gauge_renamed"}
+   -> PASS if result count > 0
 
-**What people do:** Rely on the outer behavior or handler to catch exceptions, or assume MediatR handles them.
-
-**Why it's wrong:** An uncaught exception from any behavior or handler will propagate up to the publisher (ChannelConsumerService). In the consumer loop, this will log the error and skip the envelope — acceptable — but if the exception escapes the loop's try/catch, the consumer Task faults and the device channel stops being consumed permanently for that device's lifetime.
-
-**Do this instead:** ExceptionBehavior wraps `next()` in try/catch, logs the exception, and returns without re-throwing. Pipeline continues to next iteration. The handler should never fault the consumer Task.
-
-### Anti-Pattern 6: OperationCorrelationId AsyncLocal Not Cleared in Finally
-
-**What people do:** Set `_correlation.OperationCorrelationId = correlationId` at the start of a Quartz job but only clear it in the happy path.
-
-**Why it's wrong:** AsyncLocal values flow with the async context. If the job throws and the finally is missing, the thread returned to the Quartz thread pool still carries the stale operation ID. The next job on that thread inherits it, causing log lines from the next job to appear correlated to the previous job's operation.
-
-**Do this instead:** Always clear in finally:
-```csharp
-try
-{
-    _correlation.OperationCorrelationId = correlationId;
-    // ... job work ...
-}
-finally
-{
-    _correlation.OperationCorrelationId = null;
-    _liveness.Stamp(jobKey);
-}
+7. Test runner restores original ConfigMap from snapshot
 ```
 
 ---
 
-## Integration Points
+## Timing Budgets
 
-### External Services
-
-| Service | Integration Pattern | Notes |
-|---------|---------------------|-------|
-| Network SNMP devices | UDP:162 inbound trap receive (SharpSnmpLib); SNMP GET outbound poll (SharpSnmpLib Messenger.GetAsync) | Community string auth only (v2c). Trap source IP must match DeviceRegistry entry. |
-| OTLP Collector | OtlpMetricExporter + OtlpTraceExporter (gRPC, port 4317) + OTLP log exporter | All three use same endpoint. MetricRoleGatedExporter gates business metrics. Logs not gated. |
-| Prometheus / Grafana | OTel → OTLP Collector → Prometheus remote write or Prometheus scrape of OTLP collector | No direct Prometheus client in the agent. Push-only model via OTLP. |
-| Kubernetes API | coordination.k8s.io/v1 Lease via KubernetesClient (k8s dotnet SDK) | In-cluster config auto-detected via KubernetesClientConfiguration.IsInCluster(). Local dev falls through to AlwaysLeaderElection. |
-| Quartz.NET scheduler | In-memory store (no DB). QuartzHostedService manages lifecycle. | Thread pool auto-sized to job count at startup. WaitForJobsToComplete=true for graceful shutdown. |
-
-### Internal Boundaries
-
-| Boundary | Communication | Notes |
-|----------|---------------|-------|
-| Ingestion → Pipeline | MediatR INotification publish | SnmpOidReceived is the contract. Both trap and poll paths publish the same type. |
-| SnmpListenerService → ChannelConsumerService | BoundedChannel<TrapEnvelope> | Only for trap path. Per-device. DropOldest under load. |
-| ProcessingCoordinator → MetricFactory | Direct method call (Branch A, always) | Synchronous. Not async. Instrument recording is not awaitable. |
-| ProcessingCoordinator → StateVectorService | Direct method call (Branch B, Module source only) | ConcurrentDictionary update. Not async. |
-| Any job → ICorrelationService | volatile string read (global) + AsyncLocal set/clear (per-operation) | Single writer (CorrelationJob). Multiple readers. Volatile ensures visibility without lock. |
-| OtelMetricHandler → MetricFactory | Direct method call or can be the same class | Instrument creation cached in ConcurrentDictionary. |
-| GracefulShutdownService → All shutdown targets | Direct method calls (StopAsync, Standby, CompleteAll, ForceFlush) | Each step has its own CancellationTokenSource with time budget. Step 5 (flush) has independent CTS — not linked to outer shutdown token. |
+| Event Chain | Expected Latency | Test Budget |
+|-------------|-----------------|-------------|
+| ConfigMap patch -> watch event delivery | <1s | -- |
+| Watch event -> OID map/device reload | <1s | -- |
+| Next poll cycle after reload | 0-10s (poll interval) | -- |
+| OTel periodic export | up to 10s (SDK default) | -- |
+| Prometheus scrape interval | 5s (configured in prometheus.yml) | -- |
+| **Total: ConfigMap change -> queryable** | **~25s worst case** | **30s timeout** |
+| Trap fired -> queryable in Prometheus | ~15s | **30s timeout** |
+| Test simulator deploy -> ready | ~15-20s (local image, no pull) | **60s timeout** |
+| Full E2E suite runtime estimate | -- | **~10-15 minutes** |
 
 ---
 
-## Build Order Implications for Phases
+## Anti-Patterns to Avoid
 
-The architecture has clear dependency layers that dictate phase ordering:
+### Anti-Pattern 1: In-Cluster Test Runner
+**What:** Running the test orchestrator as a K8s Job or Pod.
+**Why bad:** Requires ServiceAccount with ConfigMap read/write RBAC, complicates log collection (kubectl from inside pod), adds deployment complexity. The test needs `kubectl` access anyway for ConfigMap manipulation.
+**Instead:** Run on host machine where `kubectl` is configured. Matches existing `verify-e2e.sh` pattern.
 
-**Phase 1 — Infrastructure Foundation**
-Must exist before anything else can run. Includes: DI host setup, configuration loading with ValidateOnStart, OTel provider registration, leader election skeleton.
-- No component depends on this; everything depends on it.
+### Anti-Pattern 2: Modifying Existing Simulators
+**What:** Adding test modes or flags to OBP/NPB simulators.
+**Why bad:** OBP/NPB represent real device behavior. Mixing test concerns pollutes their purpose. If a test-mode bug introduces wrong OIDs, it masks real pipeline issues.
+**Instead:** Dedicated test simulator with its own OID space under `.999`.
 
-**Phase 2 — Device Registry + OID Map**
-DeviceRegistry (IP → DeviceInfo) and OID flat Dictionary must exist before ingestion. Without them, trap receipt and poll resolution have nothing to look up.
-- Depends on: Phase 1 (configuration, DI)
+### Anti-Pattern 3: Parallel Scenario Execution
+**What:** Running ConfigMap mutation scenarios concurrently for speed.
+**Why bad:** ConfigMap patches are global. Two scenarios patching `simetra-oidmaps` simultaneously race. Leader election means only one pod exports business metrics, so parallel verification queries could see partial/inconsistent results.
+**Instead:** Sequential scenarios with clear setup -> wait -> verify -> teardown per scenario.
 
-**Phase 3 — MediatR Pipeline (Behaviors + Handler)**
-The behaviors and OtelMetricHandler can be built and unit-tested in isolation before the ingestion layer exists. Use MediatR.Publish directly in tests.
-- Depends on: Phase 1 (DI), Phase 2 (OID map, for OidResolutionBehavior)
+### Anti-Pattern 4: Fixed Sleep Instead of Polling
+**What:** `sleep 30 && curl prometheus` instead of polling with timeout.
+**Why bad:** Pipeline latency varies (OTel export interval, Prometheus scrape timing). Fixed sleeps either waste time (too long) or cause false failures (too short).
+**Instead:** Poll with timeout using existing `wait_for_metric` pattern from `verify-e2e.sh`. Budget 30s for ConfigMap-triggered changes, 60s for deployment readiness.
 
-**Phase 4 — Ingestion (Trap Listener + Channels)**
-SnmpTrapListener + DeviceChannelManager + ChannelConsumerService. The consumer publishes to MediatR.
-- Depends on: Phase 1, Phase 2, Phase 3
+### Anti-Pattern 5: Not Snapshotting ConfigMaps Before Mutation
+**What:** Patching ConfigMaps without saving original state.
+**Why bad:** If a test fails mid-scenario, the ConfigMap is left corrupted. All subsequent tests fail. Production simulators (OBP/NPB) stop getting their OIDs resolved. The system is broken until manual intervention.
+**Instead:** Snapshot all ConfigMaps at test start. Restore from snapshot in a bash `trap EXIT` handler, guaranteeing cleanup on success, failure, or interruption.
 
-**Phase 5 — Quartz Scheduling (Poll Jobs)**
-MetricPollJob and StatePollJob. These bypass channels and publish directly to MediatR.
-- Depends on: Phase 1, Phase 2, Phase 3 (MediatR pipeline must exist to receive publications)
+### Anti-Pattern 6: Using `kubectl patch` for JSON-in-ConfigMap
+**What:** `kubectl patch configmap simetra-oidmaps --type=merge -p '...'` to modify `oidmaps.json`.
+**Why bad:** The `oidmaps.json` value is a JSON string stored inside a YAML `.data` field. `kubectl patch` operates on the YAML structure, not the inner JSON. Escaping is fragile and error-prone.
+**Instead:** Extract -> jq merge -> recreate:
+```bash
+kubectl get cm simetra-oidmaps -n simetra -o jsonpath='{.data.oidmaps\.json}' > /tmp/current.json
+jq -s '.[0] * .[1]' /tmp/current.json fixture.json > /tmp/merged.json
+kubectl create cm simetra-oidmaps -n simetra --from-file=oidmaps.json=/tmp/merged.json --dry-run=client -o yaml | kubectl apply -f -
+```
 
-**Phase 6 — Auxiliary Jobs (Heartbeat, Correlation)**
-HeartbeatJob (proves pipeline alive), CorrelationJob (rotates global ID). These depend on the SNMP trap path being complete (heartbeat sends a trap to self, which must be received and processed).
-- Depends on: Phase 4 (trap path must be functional for heartbeat loopback)
+---
 
-**Phase 7 — Graceful Shutdown + Health Probes**
-GracefulShutdownService (5-step sequence), LivenessHealthCheck (staleness-based), StartupHealthCheck, ReadinessHealthCheck.
-- Depends on: All prior phases (shuts down all components)
+## Suggested Build Order
+
+Build order follows dependency chains. Each step can be independently validated before moving on.
+
+### Step 1: Test Simulator
+
+**Build:** `simulators/e2e/e2e_simulator.py`, `simulators/e2e/Dockerfile`, `simulators/e2e/requirements.txt`, `deploy/k8s/simulators/e2e-simulator.yaml`
+
+**Why first:** Everything else depends on having a controllable SNMP device. The simulator can be validated standalone before integration.
+
+**Validation:** Deploy to K8s, exec into a pod, `snmpget -v2c -c Simetra.E2E-SIM e2e-simulator:161 1.3.6.1.4.1.47477.999.1.1.0` returns a value.
+
+### Step 2: Test Runner Framework + Pipeline Counter Tests (Phase 1)
+
+**Build:** `tests/e2e/run-e2e.sh` with pre-flight checks and Phase 1 (pipeline counters for existing OBP/NPB)
+
+**Why second:** Pipeline counter verification uses only existing simulators -- no test simulator needed. This establishes the test framework (port-forward, query helpers, report format) that all subsequent phases reuse.
+
+**Validation:** Run script, verify all 10 pipeline counters reported for OBP-01 and NPB-01.
+
+### Step 3: ConfigMap Fixtures + Test Simulator Integration (Phase 2)
+
+**Build:** `tests/e2e/fixtures/`, ConfigMap snapshot/restore/merge logic, Phase 2 (deploy test simulator, add to ConfigMaps, verify poll metrics appear)
+
+**Why third:** First phase that exercises ConfigMap manipulation and DynamicPollScheduler. The snapshot/restore pattern built here is reused by all subsequent mutation tests.
+
+**Validation:** Run Phases 1-2, verify E2E-SIM gauge and info metrics appear in Prometheus.
+
+### Step 4: Business Metric Mutation + Unknown OID Tests (Phases 3-4)
+
+**Build:** Phases 3-4 (rename, remove/unknown OID verification)
+
+**Why fourth:** Depends on Step 3's ConfigMap merge infrastructure being proven stable.
+
+**Validation:** Run Phases 1-4, verify metric_name changes are visible in Prometheus.
+
+### Step 5: Device Lifecycle + Watcher Resilience Tests (Phases 5-6)
+
+**Build:** Phases 5-6 (device add/remove, invalid JSON resilience)
+
+**Why fifth:** Device lifecycle tests are the most operationally sensitive -- removing a device from ConfigMap affects poll scheduling across all 3 replicas. Build after mutation tests are proven stable.
+
+**Validation:** Run Phases 1-6, verify poll start/stop and invalid JSON handling.
+
+### Step 6: Trap Tests + Cleanup + Final Report (Phases 7-8)
+
+**Build:** Phases 7-8 (trap verification, cleanup, comprehensive report)
+
+**Why last:** Trap tests depend on the simulator being deployed with deterministic trap interval. Report generation wraps everything up.
+
+**Validation:** Full E2E run producing complete pass/fail report.
 
 ---
 
 ## Sources
 
-- Reference implementation: `src/Simetra/` (read directly — HIGH confidence)
-  - `Program.cs` — DI registration order, 11-step startup sequence
-  - `Extensions/ServiceCollectionExtensions.cs` — Full 11-step + 5-step shutdown documentation
-  - `Services/SnmpListenerService.cs` — Trap intake pattern with middleware pipeline
-  - `Services/ChannelConsumerService.cs` — Channel consumer, consumer-side pipeline
-  - `Pipeline/DeviceChannelManager.cs` — BoundedChannel per device, DropOldest
-  - `Pipeline/DeviceRegistry.cs` — IP + name lookup, module attachment
-  - `Pipeline/ProcessingCoordinator.cs` — Dual-branch processing
-  - `Pipeline/MetricFactory.cs` — Instrument cache, label assembly
-  - `Pipeline/StateVectorService.cs` — ConcurrentDictionary state store
-  - `Pipeline/RotatingCorrelationService.cs` — volatile global + AsyncLocal per-operation
-  - `Pipeline/TrapPipelineBuilder.cs` — Middleware composition pattern
-  - `Telemetry/K8sLeaseElection.cs` — Lease API, near-instant failover on SIGTERM
-  - `Telemetry/MetricRoleGatedExporter.cs` — Meter-name-based gating, ParentProvider propagation
-  - `Jobs/MetricPollJob.cs` — Poll-bypass-channel pattern, SCHED-08 correlation, liveness stamp
-  - `Lifecycle/GracefulShutdownService.cs` — 5-step shutdown, per-step CTS budgets
-  - `HealthChecks/LivenessHealthCheck.cs` — Staleness check against IJobIntervalRegistry
+All findings are HIGH confidence, derived from direct codebase analysis:
+
+- `src/SnmpCollector/Telemetry/PipelineMetricService.cs` -- all 10 pipeline counter instrument names and labels
+- `src/SnmpCollector/Telemetry/TelemetryConstants.cs` -- meter name separation (`SnmpCollector` vs `SnmpCollector.Leader`)
+- `src/SnmpCollector/Telemetry/MetricRoleGatedExporter.cs` -- leader-only business metric export behavior
+- `src/SnmpCollector/Services/OidMapWatcherService.cs` -- ConfigMap watch pattern, error handling, reload serialization
+- `src/SnmpCollector/Services/SnmpTrapListenerService.cs` -- community string validation, trap processing
+- `src/SnmpCollector/Pipeline/Handlers/OtelMetricHandler.cs` -- all SNMP type -> instrument mapping
+- `simulators/obp/obp_simulator.py` -- simulator architecture pattern (DynamicInstance, supervised_task, trap loops)
+- `deploy/k8s/simulators/obp-deployment.yaml` -- K8s manifest pattern (Deployment + Service + health probe)
+- `deploy/k8s/simulators/simetra-headless.yaml` -- headless service for trap delivery to all pods
+- `deploy/k8s/production/deployment.yaml` -- snmp-collector deployment config (ports, volumes, probes)
+- `deploy/k8s/monitoring/prometheus-configmap.yaml` -- scrape interval (5s)
+- `deploy/k8s/verify-e2e.sh` -- existing test pattern (port-forward, check_metric, wait_for_metric, report)
 
 ---
-*Architecture research for: SNMP monitoring system — C# .NET 9, MediatR, OTel push*
-*Researched: 2026-03-04*
+*Architecture research for: E2E system verification of SNMP monitoring pipeline*
+*Researched: 2026-03-09*
