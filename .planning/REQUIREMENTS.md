@@ -15,9 +15,9 @@ Requirements for E2E System Verification milestone. Each maps to roadmap phases.
 
 ### Pipeline Counter Verification
 
-- [ ] **PIPE-01**: All 10 pipeline counters verified via Prometheus delta queries showing trend changes from simulator activity
-- [ ] **PIPE-02**: Trap-specific counters (trap_received, trap_auth_failed, trap_dropped) verified with dedicated trap scenarios
-- [ ] **PIPE-03**: Poll-specific counters (poll_executed, poll_unreachable, poll_recovered) verified with device reachability scenarios
+- [x] **PIPE-01**: All 10 pipeline counters verified via Prometheus delta queries showing trend changes from simulator activity
+- [x] **PIPE-02**: Trap-specific counters (trap_received, trap_auth_failed, trap_dropped) verified with dedicated trap scenarios
+- [x] **PIPE-03**: Poll-specific counters (poll_executed, poll_unreachable, poll_recovered) verified with device reachability scenarios
 
 ### Business Metric Verification
 
@@ -47,7 +47,7 @@ Requirements for E2E System Verification milestone. Each maps to roadmap phases.
 
 ### Test Infrastructure
 
-- [ ] **INFRA-01**: Test runner with poll-until-satisfied utilities and delta-based counter assertions
+- [x] **INFRA-01**: Test runner with poll-until-satisfied utilities and delta-based counter assertions
 - [ ] **INFRA-02**: ConfigMap snapshot/restore for safe mutation testing
 - [ ] **INFRA-03**: Single comprehensive report with pass/fail evidence from logs and Prometheus queries
 
@@ -74,9 +74,9 @@ Requirements for E2E System Verification milestone. Each maps to roadmap phases.
 | SIM-01 | Phase 20 | Complete |
 | SIM-02 | Phase 20 | Complete |
 | SIM-03 | Phase 20 | Complete |
-| PIPE-01 | Phase 21 | Pending |
-| PIPE-02 | Phase 21 | Pending |
-| PIPE-03 | Phase 21 | Pending |
+| PIPE-01 | Phase 21 | Complete |
+| PIPE-02 | Phase 21 | Complete |
+| PIPE-03 | Phase 21 | Complete |
 | BIZ-01 | Phase 22 | Pending |
 | BIZ-02 | Phase 22 | Pending |
 | BIZ-03 | Phase 22 | Pending |
@@ -91,7 +91,7 @@ Requirements for E2E System Verification milestone. Each maps to roadmap phases.
 | WATCH-02 | Phase 24 | Pending |
 | WATCH-03 | Phase 24 | Pending |
 | WATCH-04 | Phase 24 | Pending |
-| INFRA-01 | Phase 21 | Pending |
+| INFRA-01 | Phase 21 | Complete |
 | INFRA-02 | Phase 22 | Pending |
 | INFRA-03 | Phase 24 | Pending |
 | RPT-01 | Phase 24 | Pending |
