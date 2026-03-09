@@ -733,6 +733,30 @@
                 "value": "Value"
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "__tmp"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "promql"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "PromQL"
+              }
+            ]
           }
         ]
       },
@@ -762,7 +786,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "snmp_info{service_instance_id=~\"$host\", k8s_pod_name=~\"$pod\", device_name=~\"$device\"}",
+          "expr": "label_replace(label_join(snmp_info{service_instance_id=~\"$host\", k8s_pod_name=~\"$pod\", device_name=~\"$device\"}, \"__tmp\", \"~\", \"metric_name\", \"device_name\"), \"promql\", `snmp_info{metric_name=\"$1\", device_name=\"$2\"}`, \"__tmp\", \"([^~]*)~(.*)\")",
           "format": "table",
           "instant": true,
           "refId": "A"
@@ -780,7 +804,8 @@
                 "metric_name",
                 "oid",
                 "snmp_type",
-                "value"
+                "value",
+                "promql"
               ]
             }
           }
@@ -794,7 +819,8 @@
               "metric_name": 2,
               "oid": 3,
               "snmp_type": 4,
-              "value": 5
+              "value": 5,
+              "promql": 6
             }
           }
         }
