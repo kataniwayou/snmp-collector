@@ -40,20 +40,20 @@ Requirements for E2E System Verification milestone. Each maps to roadmap phases.
 
 ### ConfigMap Watcher Verification
 
-- [ ] **WATCH-01**: OID map ConfigMap change detected by watcher within seconds (verified via pod logs)
-- [ ] **WATCH-02**: Device ConfigMap change triggers DynamicPollScheduler reconciliation (verified via pod logs)
-- [ ] **WATCH-03**: Invalid JSON in ConfigMap does not crash pods (verified via pod status and logs)
-- [ ] **WATCH-04**: Watcher reconnects after K8s API disruption (verified via logs after recovery)
+- [x] **WATCH-01**: OID map ConfigMap change detected by watcher within seconds (verified via pod logs)
+- [x] **WATCH-02**: Device ConfigMap change triggers DynamicPollScheduler reconciliation (verified via pod logs)
+- [x] **WATCH-03**: Invalid JSON in ConfigMap does not crash pods (verified via pod status and logs)
+- [x] **WATCH-04**: Watcher reconnects after K8s API disruption (verified via logs after recovery)
 
 ### Test Infrastructure
 
 - [x] **INFRA-01**: Test runner with poll-until-satisfied utilities and delta-based counter assertions
 - [x] **INFRA-02**: ConfigMap snapshot/restore for safe mutation testing
-- [ ] **INFRA-03**: Single comprehensive report with pass/fail evidence from logs and Prometheus queries
+- [x] **INFRA-03**: Single comprehensive report with pass/fail evidence from logs and Prometheus queries
 
 ### Reporting
 
-- [ ] **RPT-01**: Comprehensive E2E report with pass/fail status, evidence (Prometheus query results, log excerpts), and findings
+- [x] **RPT-01**: Comprehensive E2E report with pass/fail status, evidence (Prometheus query results, log excerpts), and findings
 
 ## Out of Scope
 
@@ -87,14 +87,14 @@ Requirements for E2E System Verification milestone. Each maps to roadmap phases.
 | DEV-01 | Phase 23 | Complete |
 | DEV-02 | Phase 23 | Complete |
 | DEV-03 | Phase 23 | Complete |
-| WATCH-01 | Phase 24 | Pending |
-| WATCH-02 | Phase 24 | Pending |
-| WATCH-03 | Phase 24 | Pending |
-| WATCH-04 | Phase 24 | Pending |
+| WATCH-01 | Phase 24 | Complete |
+| WATCH-02 | Phase 24 | Complete |
+| WATCH-03 | Phase 24 | Complete |
+| WATCH-04 | Phase 24 | Complete |
 | INFRA-01 | Phase 21 | Complete |
 | INFRA-02 | Phase 22 | Complete |
-| INFRA-03 | Phase 24 | Pending |
-| RPT-01 | Phase 24 | Pending |
+| INFRA-03 | Phase 24 | Complete |
+| RPT-01 | Phase 24 | Complete |
 
 **Coverage:**
 - v1.4 requirements: 24 total
