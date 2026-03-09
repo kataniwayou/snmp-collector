@@ -96,3 +96,27 @@ restore_configmap() {
 
     kubectl apply -f "$file"
 }
+
+# ---------------------------------------------------------------------------
+# ConfigMap snapshot/restore (wraps primitives above)
+# ---------------------------------------------------------------------------
+
+FIXTURES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/fixtures"
+
+snapshot_configmaps() {
+    log_info "Snapshotting ConfigMaps for mutation testing..."
+    save_configmap "simetra-devices" "simetra" "$FIXTURES_DIR/.original-devices-configmap.yaml"
+    save_configmap "simetra-oidmaps" "simetra" "$FIXTURES_DIR/.original-oidmaps-configmap.yaml"
+    log_info "ConfigMap snapshots saved"
+}
+
+restore_configmaps() {
+    log_info "Restoring ConfigMaps from snapshots..."
+    if [ -f "$FIXTURES_DIR/.original-devices-configmap.yaml" ]; then
+        restore_configmap "$FIXTURES_DIR/.original-devices-configmap.yaml"
+    fi
+    if [ -f "$FIXTURES_DIR/.original-oidmaps-configmap.yaml" ]; then
+        restore_configmap "$FIXTURES_DIR/.original-oidmaps-configmap.yaml"
+    fi
+    log_info "ConfigMaps restored"
+}
