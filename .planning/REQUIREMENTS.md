@@ -1,7 +1,7 @@
 # Requirements: SNMP Monitoring System
 
 **Defined:** 2026-03-09
-**Core Value:** Every SNMP OID — from a trap or a poll — gets resolved, typed correctly, and pushed to Prometheus where it's queryable in Grafana within seconds.
+**Core Value:** Every SNMP OID -- from a trap or a poll -- gets resolved, typed correctly, and pushed to Prometheus where it's queryable in Grafana within seconds.
 
 ## v1.4 Requirements
 
@@ -59,10 +59,10 @@ Requirements for E2E System Verification milestone. Each maps to roadmap phases.
 
 | Feature | Reason |
 |---------|--------|
-| SnmpCollector code modifications | Findings-only milestone — document issues, don't fix them |
+| SnmpCollector code modifications | Findings-only milestone -- document issues, don't fix them |
 | Existing simulator modifications | OBP/NPB simulators are untouched; new test simulator handles edge cases |
 | Grafana verification | Tests verify Prometheus data only, not dashboard rendering |
-| Performance/load testing | Not a load test — functional verification only |
+| Performance/load testing | Not a load test -- functional verification only |
 | Chaos testing (pod kills, network partitions) | Too complex for v1.4; leader failover deferred |
 | Automated CI pipeline | Tests run manually; CI integration is future work |
 | pytest framework | Bash test runner sufficient for sequential E2E scenarios |
@@ -71,36 +71,36 @@ Requirements for E2E System Verification milestone. Each maps to roadmap phases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SIM-01 | TBD | Pending |
-| SIM-02 | TBD | Pending |
-| SIM-03 | TBD | Pending |
-| PIPE-01 | TBD | Pending |
-| PIPE-02 | TBD | Pending |
-| PIPE-03 | TBD | Pending |
-| BIZ-01 | TBD | Pending |
-| BIZ-02 | TBD | Pending |
-| BIZ-03 | TBD | Pending |
-| BIZ-04 | TBD | Pending |
-| MUT-01 | TBD | Pending |
-| MUT-02 | TBD | Pending |
-| MUT-03 | TBD | Pending |
-| DEV-01 | TBD | Pending |
-| DEV-02 | TBD | Pending |
-| DEV-03 | TBD | Pending |
-| WATCH-01 | TBD | Pending |
-| WATCH-02 | TBD | Pending |
-| WATCH-03 | TBD | Pending |
-| WATCH-04 | TBD | Pending |
-| INFRA-01 | TBD | Pending |
-| INFRA-02 | TBD | Pending |
-| INFRA-03 | TBD | Pending |
-| RPT-01 | TBD | Pending |
+| SIM-01 | Phase 20 | Pending |
+| SIM-02 | Phase 20 | Pending |
+| SIM-03 | Phase 20 | Pending |
+| PIPE-01 | Phase 21 | Pending |
+| PIPE-02 | Phase 21 | Pending |
+| PIPE-03 | Phase 21 | Pending |
+| BIZ-01 | Phase 22 | Pending |
+| BIZ-02 | Phase 22 | Pending |
+| BIZ-03 | Phase 22 | Pending |
+| BIZ-04 | Phase 22 | Pending |
+| MUT-01 | Phase 23 | Pending |
+| MUT-02 | Phase 23 | Pending |
+| MUT-03 | Phase 23 | Pending |
+| DEV-01 | Phase 23 | Pending |
+| DEV-02 | Phase 23 | Pending |
+| DEV-03 | Phase 23 | Pending |
+| WATCH-01 | Phase 24 | Pending |
+| WATCH-02 | Phase 24 | Pending |
+| WATCH-03 | Phase 24 | Pending |
+| WATCH-04 | Phase 24 | Pending |
+| INFRA-01 | Phase 21 | Pending |
+| INFRA-02 | Phase 22 | Pending |
+| INFRA-03 | Phase 24 | Pending |
+| RPT-01 | Phase 24 | Pending |
 
 **Coverage:**
 - v1.4 requirements: 24 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 24
+- Mapped to phases: 24/24
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-09*
-*Last updated: 2026-03-09 after initial definition*
+*Last updated: 2026-03-09 after roadmap creation*

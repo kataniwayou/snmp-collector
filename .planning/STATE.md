@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-09)
 
 **Core value:** Every SNMP OID — from a trap or a poll — gets resolved, typed correctly, and pushed to Prometheus where it's queryable in Grafana within seconds.
-**Current focus:** v1.4 E2E System Verification
+**Current focus:** v1.4 E2E System Verification -- Phase 20 (Test Simulator)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-03-09 — Milestone v1.4 started
+Phase: 20 of 24 (Test Simulator)
+Plan: --
+Status: Ready to plan
+Last activity: 2026-03-09 -- Roadmap created for v1.4
 
-Progress: [####################] 48/48 v1.0, 10/10 v1.1, 8/8 v1.2, 2/2 v1.3
+Progress: [####################] 48/48 v1.0, 10/10 v1.1, 8/8 v1.2, 2/2 v1.3 | v1.4: [..........] 0/5 phases
 
 ## Milestone History
 
@@ -32,46 +32,24 @@ See `.planning/milestones/` for archived roadmaps and requirements.
 
 ### Key Architectural Facts
 
-- MediatR 12.5.0 (MIT) — do NOT upgrade to v13+ (RPL-1.5 license)
+- MediatR 12.5.0 (MIT) -- do NOT upgrade to v13+ (RPL-1.5 license)
 - Two-meter architecture: MeterName for all instances, LeaderMeterName for leader only
 - Community string convention: Simetra.{DeviceName} for both auth and device identity
-- host_name/pod_name removed from metric TagLists (redundant with OTel resource attrs service_instance_id + k8s_pod_name); logs still carry host_name
-- Heartbeat is internal infrastructure — pipeline metrics prove liveness, no metric export
-- IsHeartbeat bool flag set at ingestion boundary (ChannelConsumerService); behaviors/handlers use flag, not string comparison
-- Split config: simetra-oidmaps ConfigMap (oidmaps.json bare dict) + simetra-devices ConfigMap (devices.json bare array) + simetra-config (appsettings only)
+- Split config: simetra-oidmaps ConfigMap + simetra-devices ConfigMap + simetra-config
 - K8s directory mount at /app/config (no subPath) enables ConfigMap hot-reload
-- Dashboard approach: Claude creates JSON files, user imports manually via Grafana UI (no K8s provisioning)
-- Operations dashboard at deploy/grafana/dashboards/simetra-operations.json (20 panels: pod identity table, 10 pipeline counters, 6 runtime, 3 row headers; all non-row panels have tooltip descriptions; Host Name dropdown filters by service_instance_id; runtime row: GC Collections Rate, CPU Time, Process Working Set, Exceptions, Thread Pool Threads, Thread Pool Queue Length)
-- Business dashboard at deploy/grafana/dashboards/simetra-business.json (4 panels: 2 row headers, gauge table, info table; 3 cascading filters: Host->Pod->Device; telemetry SDK columns hidden; gauge table has Trend column with delta-driven colored arrows)
+
+### E2E Test Context (v1.4)
+
+- OTel 15s export interval: poll-until-satisfied with 30s timeout, 3s interval (never fixed sleeps)
+- Prometheus 5-min staleness: verify removal via label change or counter stagnation, never absence
+- Counter assertions: cumulative temporality, use deltas filtered by device_name
+- Leader election: business metrics (snmp_gauge/snmp_info) export from leader only; pipeline counters from all
+- Test simulator uses enterprise OID subtree 47477.999, community Simetra.E2E-SIM
+- Sequential test execution required (shared Prometheus state)
 
 ### Known Tech Debt
 
 None.
-
-### Quick Tasks Completed
-
-| # | Description | Date | Commit | Directory |
-|---|-------------|------|--------|-----------|
-| 017 | Split unified ConfigMap into separate OID map and devices watchers | 2026-03-07 | 2377154 | [017-split-configmap-oidmap-devices](./quick/017-split-configmap-oidmap-devices/) |
-| 018 | Add IsHeartbeat flag to pipeline (replace string comparisons) | 2026-03-08 | 5d0f980 | [018-add-isheartbeat-flag-to-pipeline](./quick/018-add-isheartbeat-flag-to-pipeline/) |
-| 019 | Reorganize Simetra files and cleanup K8s manifests | 2026-03-08 | f3844f6 | [019-reorganize-simetra-files-cleanup-k8s](./quick/019-reorganize-simetra-files-cleanup-k8s/) |
-| 020 | Remove redundant host_name/pod_name metric tags | 2026-03-08 | 976b36e | [020-remove-redundant-host-pod-tags](./quick/020-remove-redundant-host-pod-tags/) |
-| 021 | Remove Site, fix deploy YAML issues | 2026-03-08 | 2e880d9 | [021-remove-site-fix-deploy-yaml-issues](./quick/021-remove-site-fix-deploy-yaml-issues/) |
-| 022 | Fix operations dashboard missing metrics + Prometheus remote write | 2026-03-08 | 48647cd | [022-fix-operations-dashboard-missing-metrics](./quick/022-fix-operations-dashboard-missing-metrics/) |
-| 023 | Fix OTel cumulative temporality for Prometheus rate() | 2026-03-08 | 3391e97 | [023-fix-otel-cumulative-temporality-for-rate](./quick/023-fix-otel-cumulative-temporality-for-rate/) |
-| 024 | Add panel descriptions to operations dashboard | 2026-03-08 | cd5ac81 | [024-add-panel-descriptions-operations-dashb](./quick/024-add-panel-descriptions-operations-dashb/) |
-| 025 | Cleanup dead metrics, dashboard, and code | 2026-03-08 | 3f34fad | [025-cleanup-dead-metrics-dashboard-and-code](./quick/025-cleanup-dead-metrics-dashboard-and-code/) |
-| 026 | Business dashboard table and filter fix | 2026-03-08 | 7f9f8b4 | [026-business-dashboard-table-and-filter-fix](./quick/026-business-dashboard-table-and-filter-fix/) |
-| 027 | Fix simulator info/gauge + add static OIDs | 2026-03-09 | 3939ba9 | [027-fix-simulator-info-gauge-add-static-oid](./quick/027-fix-simulator-info-gauge-add-static-oid/) |
-| 028 | Gauge trend colored value cell (delta arrows) | 2026-03-09 | cf65781 | [028-gauge-trend-colored-value-cell](./quick/028-gauge-trend-colored-value-cell/) |
-| 029 | Remove trend column from gauge table | 2026-03-09 | 060f407 | [029-remove-trend-column](./quick/029-remove-trend-column/) |
-| 030 | Rollback to trend column approach | 2026-03-09 | 6c4b49c | [030-value-cell-delta-coloring](./quick/030-value-cell-delta-coloring/) |
-| 031 | Add PromQL column to gauge table | 2026-03-09 | 212e2cd | [031-add-promql-column-to-gauge-table](./quick/031-add-promql-column-to-gauge-table/) |
-| 032 | Add PromQL column to info table | 2026-03-09 | 65e01b7 | [032-add-promql-column-to-info-table](./quick/032-add-promql-column-to-info-table/) |
-| 033 | Include host/pod labels in PromQL column | 2026-03-09 | 2f74fd6 | [033-promql-include-host-pod-labels](./quick/033-promql-include-host-pod-labels/) |
-| 034 | Add Host column and rename Pod in ops dashboard | 2026-03-09 | acb8e71 | [034-ops-dashboard-host-column-pod-rename](./quick/034-ops-dashboard-host-column-pod-rename/) |
-| 035 | Replace GC panels with CPU Time and Exceptions | 2026-03-09 | 31a9921 | [035-refactor-runtime-panels-for-anomaly-det](./quick/035-refactor-runtime-panels-for-anomaly-det/) |
-| 036 | Cleanup tech debt: orphan, off-by-one, comment | 2026-03-09 | c3c7ff5 | [036-cleanup-tech-debt-orphan-offbyone-comment](./quick/036-cleanup-tech-debt-orphan-offbyone-comment/) |
 
 ### Blockers/Concerns
 
@@ -80,5 +58,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-09
-Stopped at: Completed quick-036
+Stopped at: Roadmap created for v1.4 milestone
 Resume file: None
