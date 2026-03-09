@@ -290,6 +290,25 @@
               {
                 "id": "displayName",
                 "value": "Value"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "basic",
+                  "type": "color-background"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value #B"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
               }
             ]
           }
@@ -325,10 +344,37 @@
           "format": "table",
           "instant": true,
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "delta(snmp_gauge{service_instance_id=~\"$host\", k8s_pod_name=~\"$pod\", device_name=~\"$device\"}[30s])",
+          "format": "table",
+          "instant": true,
+          "refId": "B",
+          "hide": false
         }
       ],
       "title": "Gauge Metrics",
       "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "configFromData",
+          "options": {
+            "configRefId": "B",
+            "mappings": [
+              {
+                "fieldName": "Value #B",
+                "handlerKey": "threshold1"
+              }
+            ]
+          }
+        },
         {
           "id": "organize",
           "options": {
