@@ -21,10 +21,10 @@ Requirements for E2E System Verification milestone. Each maps to roadmap phases.
 
 ### Business Metric Verification
 
-- [ ] **BIZ-01**: snmp_gauge metrics verified with correct labels (metric_name, device_name, oid, snmp_type) and numeric values
-- [ ] **BIZ-02**: snmp_info metrics verified with correct labels including string value label
-- [ ] **BIZ-03**: Unmapped OIDs classified as metric_name="Unknown" in Prometheus
-- [ ] **BIZ-04**: Trap-originated metrics appear in Prometheus with correct device_name and labels
+- [x] **BIZ-01**: snmp_gauge metrics verified with correct labels (metric_name, device_name, oid, snmp_type) and numeric values
+- [x] **BIZ-02**: snmp_info metrics verified with correct labels including string value label
+- [x] **BIZ-03**: Unmapped OIDs classified as metric_name="Unknown" in Prometheus
+- [x] **BIZ-04**: Trap-originated metrics appear in Prometheus with correct device_name and labels
 
 ### OID Map Mutation Verification
 
@@ -48,7 +48,7 @@ Requirements for E2E System Verification milestone. Each maps to roadmap phases.
 ### Test Infrastructure
 
 - [x] **INFRA-01**: Test runner with poll-until-satisfied utilities and delta-based counter assertions
-- [ ] **INFRA-02**: ConfigMap snapshot/restore for safe mutation testing
+- [x] **INFRA-02**: ConfigMap snapshot/restore for safe mutation testing
 - [ ] **INFRA-03**: Single comprehensive report with pass/fail evidence from logs and Prometheus queries
 
 ### Reporting
@@ -77,10 +77,10 @@ Requirements for E2E System Verification milestone. Each maps to roadmap phases.
 | PIPE-01 | Phase 21 | Complete |
 | PIPE-02 | Phase 21 | Complete |
 | PIPE-03 | Phase 21 | Complete |
-| BIZ-01 | Phase 22 | Pending |
-| BIZ-02 | Phase 22 | Pending |
-| BIZ-03 | Phase 22 | Pending |
-| BIZ-04 | Phase 22 | Pending |
+| BIZ-01 | Phase 22 | Complete |
+| BIZ-02 | Phase 22 | Complete |
+| BIZ-03 | Phase 22 | Complete |
+| BIZ-04 | Phase 22 | Complete |
 | MUT-01 | Phase 23 | Pending |
 | MUT-02 | Phase 23 | Pending |
 | MUT-03 | Phase 23 | Pending |
@@ -92,7 +92,7 @@ Requirements for E2E System Verification milestone. Each maps to roadmap phases.
 | WATCH-03 | Phase 24 | Pending |
 | WATCH-04 | Phase 24 | Pending |
 | INFRA-01 | Phase 21 | Complete |
-| INFRA-02 | Phase 22 | Pending |
+| INFRA-02 | Phase 22 | Complete |
 | INFRA-03 | Phase 24 | Pending |
 | RPT-01 | Phase 24 | Pending |
 

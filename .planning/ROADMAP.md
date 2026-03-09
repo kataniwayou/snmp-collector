@@ -12,7 +12,7 @@ This milestone builds an E2E test harness that proves the full SNMP-to-Prometheu
 
 - [x] **Phase 20: Test Simulator** - Dedicated pysnmp simulator for E2E edge cases with mapped + unmapped OIDs and configurable traps
 - [x] **Phase 21: Test Harness and Pipeline Counter Verification** - Bash test runner with polling utilities and delta assertions, proving all 10 pipeline counters
-- [ ] **Phase 22: Business Metric and Unknown OID Verification** - Verify snmp_gauge/snmp_info correctness and unknown OID classification with ConfigMap snapshot/restore
+- [x] **Phase 22: Business Metric and Unknown OID Verification** - Verify snmp_gauge/snmp_info correctness and unknown OID classification with ConfigMap snapshot/restore
 - [ ] **Phase 23: OID Map Mutation and Device Lifecycle Verification** - Verify runtime configuration changes propagate correctly to Prometheus
 - [ ] **Phase 24: Watcher Resilience and Comprehensive Report** - Verify ConfigMap watcher error handling and generate final pass/fail report
 
@@ -62,8 +62,8 @@ Plans:
   5. ConfigMap snapshot/restore utility safely backs up and restores oidmaps and devices ConfigMaps before/after mutation tests
 **Plans:** 2 plans
 Plans:
-- [ ] 22-01-PLAN.md — ConfigMap snapshot/restore infrastructure + gauge/info label verification scenarios
-- [ ] 22-02-PLAN.md — Unknown OID mutation test + trap-originated metric verification
+- [x] 22-01-PLAN.md — ConfigMap snapshot/restore infrastructure + gauge/info label verification scenarios
+- [x] 22-02-PLAN.md — Unknown OID mutation test + trap-originated metric verification
 
 ### Phase 23: OID Map Mutation and Device Lifecycle Verification
 
@@ -98,7 +98,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 20. Test Simulator | 2/2 | Complete | 2026-03-09 |
 | 21. Test Harness + Pipeline Counters | 2/2 | Complete | 2026-03-09 |
-| 22. Business Metrics + Unknown OIDs | 0/TBD | Not started | - |
+| 22. Business Metrics + Unknown OIDs | 2/2 | Complete | 2026-03-09 |
 | 23. OID Mutations + Device Lifecycle | 0/TBD | Not started | - |
 | 24. Watcher Resilience + Report | 0/TBD | Not started | - |
 
