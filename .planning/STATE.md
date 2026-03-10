@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-03-09)
 Phase: Not started (defining next milestone)
 Plan: —
 Status: v1.4 complete, ready for next milestone
-Last activity: 2026-03-10 -- Completed quick-037 (IP+Port as primary device identity)
+Last activity: 2026-03-10 -- Completed quick-038 (configurable poll timeout percentage)
 
 Progress: [####################] 48/48 v1.0, 10/10 v1.1, 8/8 v1.2, 2/2 v1.3, 11/11 v1.4
 
@@ -50,6 +50,7 @@ None.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 037 | IP+Port as primary device identity | 2026-03-10 | af973c7 | [037-ip-port-primary-device-identity](./quick/037-ip-port-primary-device-identity/) |
+| 038 | Configurable poll timeout percentage | 2026-03-10 | 4984002 | [038-configurable-poll-timeout-multiplier](./quick/038-configurable-poll-timeout-multiplier/) |
 
 ### Blockers/Concerns
 
