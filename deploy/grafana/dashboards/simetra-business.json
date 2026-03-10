@@ -846,6 +846,7 @@
                 "k8s_pod_name",
                 "ip",
                 "device_name",
+                "source",
                 "metric_name",
                 "oid",
                 "snmp_type",
