@@ -897,7 +897,7 @@
         "y": 22
       },
       "id": null,
-      "title": "Source Distribution",
+      "title": "Collection Analytics",
       "type": "row"
     },
     {
@@ -964,7 +964,7 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 18,
+        "w": 14,
         "x": 0,
         "y": 23
       },
@@ -1043,8 +1043,8 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 6,
-        "x": 18,
+        "w": 5,
+        "x": 14,
         "y": 23
       },
       "id": null,
@@ -1079,6 +1079,100 @@
         }
       ],
       "title": "Source Distribution",
+      "type": "piechart"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Resolved"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Unknown"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 5,
+        "x": 19,
+        "y": 23
+      },
+      "id": null,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "values": [
+            "percent"
+          ]
+        },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "count({metric_name=\"Unknown\", service_instance_id=~\"$host\", k8s_pod_name=~\"$pod\"})",
+          "legendFormat": "Unknown",
+          "instant": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "count({metric_name!=\"Unknown\", metric_name!=\"\", service_instance_id=~\"$host\", k8s_pod_name=~\"$pod\"})",
+          "legendFormat": "Resolved",
+          "instant": true,
+          "refId": "B"
+        }
+      ],
+      "title": "OID Resolution",
       "type": "piechart"
     }
   ],
