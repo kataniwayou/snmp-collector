@@ -68,30 +68,30 @@ public sealed class DynamicPollSchedulerTests
         await _scheduler.Received(1).ScheduleJob(
             Arg.Any<IJobDetail>(), Arg.Any<ITrigger>(), Arg.Any<CancellationToken>());
         _intervalRegistry.Received(1).Register(
-            Arg.Is<string>(k => k.Contains("DEV-01")), 10);
+            Arg.Is<string>(k => k.Contains("127.0.0.1_161")), 10);
     }
 
     [Fact]
     public async Task ReconcileAsync_WithRemovedDevices_DeletesJobs()
     {
-        SetupExistingJobs("metric-poll-DEV-01-0");
-        _intervalRegistry.TryGetInterval("metric-poll-DEV-01-0", out Arg.Any<int>())
+        SetupExistingJobs("metric-poll-127.0.0.1_161-0");
+        _intervalRegistry.TryGetInterval("metric-poll-127.0.0.1_161-0", out Arg.Any<int>())
             .Returns(x => { x[1] = 10; return true; });
 
         await _sut.ReconcileAsync(Array.Empty<DeviceOptions>(), CancellationToken.None);
 
         await _scheduler.Received(1).DeleteJob(
-            Arg.Is<JobKey>(k => k.Name == "metric-poll-DEV-01-0"),
+            Arg.Is<JobKey>(k => k.Name == "metric-poll-127.0.0.1_161-0"),
             Arg.Any<CancellationToken>());
-        _intervalRegistry.Received(1).Unregister("metric-poll-DEV-01-0");
-        _livenessVector.Received(1).Remove("metric-poll-DEV-01-0");
+        _intervalRegistry.Received(1).Unregister("metric-poll-127.0.0.1_161-0");
+        _livenessVector.Received(1).Remove("metric-poll-127.0.0.1_161-0");
     }
 
     [Fact]
     public async Task ReconcileAsync_WithChangedInterval_ReschedulesJob()
     {
-        SetupExistingJobs("metric-poll-DEV-01-0");
-        _intervalRegistry.TryGetInterval("metric-poll-DEV-01-0", out Arg.Any<int>())
+        SetupExistingJobs("metric-poll-127.0.0.1_161-0");
+        _intervalRegistry.TryGetInterval("metric-poll-127.0.0.1_161-0", out Arg.Any<int>())
             .Returns(x => { x[1] = 10; return true; });
 
         // Interval changed from 10 to 30
@@ -100,14 +100,14 @@ public sealed class DynamicPollSchedulerTests
         await _scheduler.Received(1).RescheduleJob(
             Arg.Any<TriggerKey>(), Arg.Any<ITrigger>(), Arg.Any<CancellationToken>());
         _intervalRegistry.Received(1).Register(
-            Arg.Is<string>(k => k.Contains("DEV-01")), 30);
+            Arg.Is<string>(k => k.Contains("127.0.0.1_161")), 30);
     }
 
     [Fact]
     public async Task ReconcileAsync_WithUnchangedDevices_NoChanges()
     {
-        SetupExistingJobs("metric-poll-DEV-01-0");
-        _intervalRegistry.TryGetInterval("metric-poll-DEV-01-0", out Arg.Any<int>())
+        SetupExistingJobs("metric-poll-127.0.0.1_161-0");
+        _intervalRegistry.TryGetInterval("metric-poll-127.0.0.1_161-0", out Arg.Any<int>())
             .Returns(x => { x[1] = 10; return true; });
 
         // Same interval = no changes

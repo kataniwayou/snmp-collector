@@ -103,12 +103,13 @@ public sealed class MetricPollJobTests : IDisposable
     }
 
     private static IJobExecutionContext MakeContext(
-        string deviceName = DeviceName,
+        string ipAddress = DeviceIp,
+        int port = DevicePort,
         int pollIndex = 0,
         int intervalSeconds = 30,
         CancellationToken cancellationToken = default)
     {
-        return new StubJobExecutionContext(deviceName, pollIndex, intervalSeconds, cancellationToken);
+        return new StubJobExecutionContext(ipAddress, port, pollIndex, intervalSeconds, cancellationToken);
     }
 
     private long CountPollExecuted()
@@ -125,7 +126,7 @@ public sealed class MetricPollJobTests : IDisposable
         var registry = new StubDeviceRegistry([]);
         var sender   = new CapturingSender();
         var job      = CreateJob(registry: registry, sender: sender);
-        var context  = MakeContext("nonexistent-device");
+        var context  = MakeContext("99.99.99.99", 9999);
 
         // Act
         await job.Execute(context);
@@ -194,7 +195,7 @@ public sealed class MetricPollJobTests : IDisposable
             sender:     sender);
 
         // Act
-        await job.Execute(MakeContext(deviceName: "custom-device"));
+        await job.Execute(MakeContext(ipAddress: "10.0.0.99", port: 1161));
 
         // Assert -- StubSnmpClient captured endpoint and community
         Assert.Equal(1161, snmpClient.LastEndpoint!.Port);
@@ -328,7 +329,7 @@ public sealed class MetricPollJobTests : IDisposable
             sender:     sender);
 
         // Act
-        await job.Execute(MakeContext(deviceName: "custom-device"));
+        await job.Execute(MakeContext(ipAddress: "10.0.0.99", port: 1161));
 
         // Assert -- community string should be the explicit one, not Simetra.custom-device
         Assert.Equal("my-explicit-community", snmpClient.LastCommunity!.ToString());
@@ -358,7 +359,7 @@ public sealed class MetricPollJobTests : IDisposable
 
         // --- Device not found -- must NOT increment ---
         var missingJob = CreateJob(registry: new StubDeviceRegistry([]));
-        await missingJob.Execute(MakeContext("nonexistent"));
+        await missingJob.Execute(MakeContext("99.99.99.99", 9999));
         Assert.Equal(2, CountPollExecuted()); // still 2
     }
 
@@ -469,7 +470,7 @@ public sealed class MetricPollJobTests : IDisposable
 
     /// <summary>
     /// Minimal IJobExecutionContext stub providing the properties MetricPollJob reads:
-    /// MergedJobDataMap (deviceName, pollIndex, intervalSeconds), JobDetail.Key.Name,
+    /// MergedJobDataMap (ipAddress, port, pollIndex, intervalSeconds), JobDetail.Key.Name,
     /// and CancellationToken. All unused interface members throw NotImplementedException
     /// or return safe defaults.
     /// </summary>
@@ -478,7 +479,8 @@ public sealed class MetricPollJobTests : IDisposable
         private readonly IJobDetail _jobDetail;
 
         public StubJobExecutionContext(
-            string deviceName,
+            string ipAddress,
+            int port,
             int pollIndex,
             int intervalSeconds,
             CancellationToken cancellationToken)
@@ -487,13 +489,14 @@ public sealed class MetricPollJobTests : IDisposable
 
             MergedJobDataMap = new JobDataMap
             {
-                ["deviceName"]      = deviceName,
+                ["ipAddress"]       = ipAddress,
+                ["port"]            = port,
                 ["pollIndex"]       = pollIndex,
                 ["intervalSeconds"] = intervalSeconds
             };
 
             _jobDetail = JobBuilder.Create<MetricPollJob>()
-                .WithIdentity($"metric-poll-{deviceName}-{pollIndex}")
+                .WithIdentity($"metric-poll-{ipAddress}_{port}-{pollIndex}")
                 .Build();
         }
 

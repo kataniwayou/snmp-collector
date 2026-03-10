@@ -102,7 +102,7 @@ public static class ServiceCollectionExtensions
                     // Cumulative temporality required: Prometheus rate() needs monotonically
                     // increasing counter values. Delta temporality sends per-interval deltas
                     // which rate() cannot compute over.
-                    return new PeriodicExportingMetricReader(roleGated)
+                    return new PeriodicExportingMetricReader(roleGated, exportIntervalMilliseconds: 15_000)
                     {
                         TemporalityPreference = MetricReaderTemporalityPreference.Cumulative
                     };
@@ -459,23 +459,24 @@ public static class ServiceCollectionExtensions
                 for (var pi = 0; pi < device.MetricPolls.Count; pi++)
                 {
                     var poll = device.MetricPolls[pi];
-                    var jobKey = new JobKey($"metric-poll-{device.Name}-{pi}");
+                    var jobKey = new JobKey($"metric-poll-{device.IpAddress}_{device.Port}-{pi}");
                     q.AddJob<MetricPollJob>(j => j
                         .WithIdentity(jobKey)
-                        .UsingJobData("deviceName", device.Name)
+                        .UsingJobData("ipAddress", device.IpAddress)
+                        .UsingJobData("port", device.Port)
                         .UsingJobData("pollIndex", pi)
                         .UsingJobData("intervalSeconds", poll.IntervalSeconds));
 
                     q.AddTrigger(t => t
                         .ForJob(jobKey)
-                        .WithIdentity($"metric-poll-{device.Name}-{pi}-trigger")
+                        .WithIdentity($"metric-poll-{device.IpAddress}_{device.Port}-{pi}-trigger")
                         .StartNow()
                         .WithSimpleSchedule(s => s
                             .WithIntervalInSeconds(poll.IntervalSeconds)
                             .RepeatForever()
                             .WithMisfireHandlingInstructionNextWithRemainingCount()));
 
-                    intervalRegistry.Register($"metric-poll-{device.Name}-{pi}", poll.IntervalSeconds);
+                    intervalRegistry.Register($"metric-poll-{device.IpAddress}_{device.Port}-{pi}", poll.IntervalSeconds);
                 }
             }
         });

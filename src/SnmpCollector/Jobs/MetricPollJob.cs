@@ -57,18 +57,19 @@ public sealed class MetricPollJob : IJob
         _correlation.OperationCorrelationId = _correlation.CurrentCorrelationId;
 
         var map = context.MergedJobDataMap;
-        var deviceName = map.GetString("deviceName")!;
+        var ipAddress = map.GetString("ipAddress")!;
+        var port = map.GetInt("port");
         var pollIndex = map.GetInt("pollIndex");
         var intervalSeconds = map.GetInt("intervalSeconds");
         var jobKey = context.JobDetail.Key.Name;
 
         // Device lookup must succeed before we enter the try block.
         // Config errors (device removed after scheduler started) do NOT count as a poll execution.
-        if (!_deviceRegistry.TryGetDeviceByName(deviceName, out var device))
+        if (!_deviceRegistry.TryGetByIpPort(ipAddress, port, out var device))
         {
             _logger.LogWarning(
-                "Poll job {JobKey}: device '{DeviceName}' not found in registry -- skipping poll",
-                jobKey, deviceName);
+                "Poll job {JobKey}: device at {IpAddress}:{Port} not found in registry -- skipping poll",
+                jobKey, ipAddress, port);
             return;
         }
 
@@ -101,12 +102,12 @@ public sealed class MetricPollJob : IJob
             await DispatchResponseAsync(response, device, context.CancellationToken);
 
             // Success: reset failure counter; log + counter only on recovered transition.
-            if (_unreachabilityTracker.RecordSuccess(deviceName))
+            if (_unreachabilityTracker.RecordSuccess(device.Name))
             {
                 _logger.LogInformation(
                     "Device {Name} ({Ip}) recovered after consecutive failures",
                     device.Name, device.IpAddress);
-                _pipelineMetrics.IncrementPollRecovered();
+                _pipelineMetrics.IncrementPollRecovered(device.Name);
             }
         }
         catch (OperationCanceledException) when (!context.CancellationToken.IsCancellationRequested)
@@ -115,7 +116,7 @@ public sealed class MetricPollJob : IJob
             _logger.LogWarning(
                 "Poll job {JobKey} timed out waiting for SNMP response from {DeviceName} ({Ip})",
                 jobKey, device.Name, device.IpAddress);
-            RecordFailure(deviceName, device);
+            RecordFailure(device.Name, device);
         }
         catch (OperationCanceledException)
         {
@@ -129,12 +130,12 @@ public sealed class MetricPollJob : IJob
             _logger.LogWarning(ex,
                 "Poll job {JobKey} failed for {DeviceName} ({Ip})",
                 jobKey, device.Name, device.IpAddress);
-            RecordFailure(deviceName, device);
+            RecordFailure(device.Name, device);
         }
         finally
         {
             // SC#4: always increment after every completed poll attempt, success or failure.
-            _pipelineMetrics.IncrementPollExecuted();
+            _pipelineMetrics.IncrementPollExecuted(device.Name);
             // HLTH-05: Stamp liveness vector on completion (always, even on failure)
             _liveness.Stamp(jobKey);
             // Clear operation-scoped correlationId so it doesn't leak to other async contexts.
@@ -189,7 +190,7 @@ public sealed class MetricPollJob : IJob
             _logger.LogWarning(
                 "Device {Name} ({Ip}) unreachable after {N} consecutive failures",
                 device.Name, device.IpAddress, failureCount);
-            _pipelineMetrics.IncrementPollUnreachable();
+            _pipelineMetrics.IncrementPollUnreachable(deviceName);
         }
     }
 }

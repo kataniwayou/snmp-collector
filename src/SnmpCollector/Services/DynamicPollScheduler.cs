@@ -69,7 +69,7 @@ public sealed class DynamicPollScheduler
         {
             for (var pi = 0; pi < device.MetricPolls.Count; pi++)
             {
-                var jobName = $"{JobPrefix}{device.Name}-{pi}";
+                var jobName = $"{JobPrefix}{device.IpAddress}_{device.Port}-{pi}";
                 desiredJobs[jobName] = (device, pi, device.MetricPolls[pi]);
             }
         }
@@ -142,7 +142,8 @@ public sealed class DynamicPollScheduler
         var jobKey = new JobKey(jobName);
         var job = JobBuilder.Create<MetricPollJob>()
             .WithIdentity(jobKey)
-            .UsingJobData("deviceName", device.Name)
+            .UsingJobData("ipAddress", device.IpAddress)
+            .UsingJobData("port", device.Port)
             .UsingJobData("pollIndex", pollIndex)
             .UsingJobData("intervalSeconds", poll.IntervalSeconds)
             .Build();
