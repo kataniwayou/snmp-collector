@@ -913,7 +913,7 @@
           "custom": {
             "axisBorderShow": false,
             "axisCenteredZero": false,
-            "axisLabel": "events/s",
+            "axisLabel": "changes/min",
             "drawStyle": "line",
             "fillOpacity": 20,
             "lineWidth": 2,
@@ -927,7 +927,7 @@
               "mode": "none"
             }
           },
-          "unit": "ops"
+          "unit": "short"
         },
         "overrides": [
           {
@@ -989,7 +989,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by (source) (rate(snmp_event_handled_total{service_instance_id=~\"$host\", k8s_pod_name=~\"$pod\"}[1m]))",
+          "expr": "sum by (source) (changes({source=~\".+\", service_instance_id=~\"$host\", k8s_pod_name=~\"$pod\"}[1m]))",
           "legendFormat": "{{source}}",
           "refId": "A"
         }
