@@ -90,9 +90,9 @@ public sealed class DevicesOptionsValidator : IValidateOptions<DevicesOptions>
             failures.Add($"{prefix}.Oids must contain at least one entry");
         }
 
-        if (poll.TimeoutMultiplier is < 0.1 or > 0.99)
+        if (poll.TimeoutMultiplier is < 0.1 or > 0.9)
         {
-            failures.Add($"{prefix}.TimeoutMultiplier must be between 0.1 and 0.99 (got {poll.TimeoutMultiplier})");
+            failures.Add($"{prefix}.TimeoutMultiplier must be between 0.1 and 0.9 (got {poll.TimeoutMultiplier})");
         }
     }
 }
